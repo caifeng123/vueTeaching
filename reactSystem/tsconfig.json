@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"allowSyntheticDefaultImports": true,
+		"lib": ["dom", "es2021"],
+		"target": "es6",
+		"esModuleInterop": true,
+		"sourceMap": true,
+		"importHelpers": true
+	},
+	"include": ["./src/**/*"],
+	"exclude": ["node_modules"]
+}
