@@ -30,13 +30,4 @@ function effect(fn: () => void) {
 	fn();
 }
 
-effect(() => {
-	document.body.innerText = obj.text;
-});
-let index = 0;
-
-setInterval(() => {
-	obj.text = `${obj.text}${index++}`;
-}, 1000);
-
 export {effect, obj};
