@@ -19,15 +19,13 @@ setInterval(() => {
 	obj.text = `${obj.text}${index++}`;
 }, 1000);
 
-let temp1, temp2;
-
 effect(() => {
 	console.log("effect1执行");
 	effect(() => {
 		console.log("effect2执行");
-		temp2 = obj.text;
+		obj.text;
 	});
-	temp1 = obj.go;
+	obj.go;
 });
 
 setTimeout(() => {

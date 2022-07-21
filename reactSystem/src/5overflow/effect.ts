@@ -51,7 +51,7 @@ const track = (target: DataType, key: string | symbol) => {
 };
 
 /**
- * @describe 触发相关依赖
+ * @describe 触发相关依赖 @add 添加了避免set时重复添加当前effect事件，导致无效递归调用
  * @use proxy被set时调用
  */
 const trigger = (target: DataType, key: string | symbol) => {
@@ -65,8 +65,15 @@ const trigger = (target: DataType, key: string | symbol) => {
 	/**
 	 * Q: 为什么要重新生成一个set去迭代执行，不直接执行
 	 * A: 因为在执行函数时,会重新收集依赖，像set中添加，导致循环一直继续且重复。使用新Set迭代使得更新原set不导致新set不停止
+	 * Q: 为什么需要循环且不记录当前活跃函数（栈顶元素即为活跃函数）
+	 * A: 因为对于 i++ 情况来说, 先回取值调用 track 再调用 trigger 执行赋值操作，当前的活跃函数就是 i++ 操作，不应再次被加入副作用队列执行。否则会死循环
 	 */
-	const effectsToRun = new Set(depsSet);
+	const effectsToRun = new Set() as DepsSet;
+	for (let item of depsSet) {
+		if (item !== activeStack[0]) {
+			effectsToRun.add(item);
+		}
+	}
 	effectsToRun.forEach((fn) => fn());
 };
 
