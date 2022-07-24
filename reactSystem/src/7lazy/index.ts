@@ -6,13 +6,13 @@
 import {effect, obj} from "./effect";
 
 const effectFn = effect(
-	() => {
-		obj.text = "1111";
-		return obj.text + "xxx";
-	},
-	{
-		lazy: true,
-	}
+    () => {
+        obj.text = "1111";
+        return obj.text + "xxx";
+    },
+    {
+        lazy: true,
+    }
 );
 
 const res = effectFn();

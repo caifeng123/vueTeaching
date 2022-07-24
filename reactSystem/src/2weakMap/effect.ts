@@ -5,7 +5,7 @@
 
 // 基本数据
 const data = {
-	text: "cc123nice",
+    text: "cc123nice",
 };
 
 type DepsSet = Set<() => void>;
@@ -34,16 +34,16 @@ let activeEffect = null;
  * @use proxy被get时调用
  */
 const track = (target: DataType, key: string | symbol) => {
-	if (!activeEffect) return;
-	let depsMap = bucket.get(target);
-	if (!depsMap) {
-		bucket.set(target, (depsMap = new Map() as DepsMap));
-	}
-	let depsSet = depsMap.get(key);
-	if (!depsSet) {
-		depsMap.set(key, (depsSet = new Set() as DepsSet));
-	}
-	depsSet.add(activeEffect);
+    if (!activeEffect) return;
+    let depsMap = bucket.get(target);
+    if (!depsMap) {
+        bucket.set(target, (depsMap = new Map() as DepsMap));
+    }
+    let depsSet = depsMap.get(key);
+    if (!depsSet) {
+        depsMap.set(key, (depsSet = new Set() as DepsSet));
+    }
+    depsSet.add(activeEffect);
 };
 
 /**
@@ -51,32 +51,32 @@ const track = (target: DataType, key: string | symbol) => {
  * @use proxy被set时调用
  */
 const trigger = (target: DataType, key: string | symbol) => {
-	const depsMap = bucket.get(target);
+    const depsMap = bucket.get(target);
 
-	if (!depsMap) {
-		return;
-	}
-	const depsSet = depsMap.get(key);
-	depsSet?.forEach((fn) => fn());
+    if (!depsMap) {
+        return;
+    }
+    const depsSet = depsMap.get(key);
+    depsSet?.forEach((fn) => fn());
 };
 
 const obj = new Proxy(data, {
-	get(target, key) {
-		console.log("get");
-		track(target, key);
-		return target[key];
-	},
-	set(target, key, value) {
-		console.log("set");
-		target[key] = value;
-		trigger(target, key);
-		return true;
-	},
+    get(target, key) {
+        console.log("get");
+        track(target, key);
+        return target[key];
+    },
+    set(target, key, value) {
+        console.log("set");
+        target[key] = value;
+        trigger(target, key);
+        return true;
+    },
 });
 
 function effect(fn: () => void) {
-	activeEffect = fn;
-	fn();
+    activeEffect = fn;
+    fn();
 }
 
 export {effect, obj};

@@ -5,21 +5,21 @@
 
 // 基本数据
 const data = {
-	go: true,
-	text: "cc123nice",
+    go: true,
+    text: "cc123nice",
 };
 
 /**
  * @add 副作用可选项
  */
 type EffectOptions = {
-	scheduler?: (fn: () => void) => void;
+    scheduler?: (fn: () => void) => void;
 };
 
 type EffectFnType = {
-	(): void;
-	deps: DepsSet[];
-	options: EffectOptions;
+    (): void;
+    deps: DepsSet[];
+    options: EffectOptions;
 };
 
 type DepsSet = Set<EffectFnType>;
@@ -44,17 +44,17 @@ let activeStack: EffectFnType[] = [];
  * @use proxy被get时调用
  */
 const track = (target: DataType, key: string | symbol) => {
-	if (!activeStack.length) return;
-	let depsMap = bucket.get(target);
-	if (!depsMap) {
-		bucket.set(target, (depsMap = new Map() as DepsMap));
-	}
-	let depsSet = depsMap.get(key);
-	if (!depsSet) {
-		depsMap.set(key, (depsSet = new Set() as DepsSet));
-	}
-	depsSet.add(activeStack[0]);
-	activeStack[0].deps.push(depsSet);
+    if (!activeStack.length) return;
+    let depsMap = bucket.get(target);
+    if (!depsMap) {
+        bucket.set(target, (depsMap = new Map() as DepsMap));
+    }
+    let depsSet = depsMap.get(key);
+    if (!depsSet) {
+        depsMap.set(key, (depsSet = new Set() as DepsSet));
+    }
+    depsSet.add(activeStack[0]);
+    activeStack[0].deps.push(depsSet);
 };
 
 /**
@@ -62,57 +62,57 @@ const track = (target: DataType, key: string | symbol) => {
  * @use proxy被set时调用
  */
 const trigger = (target: DataType, key: string | symbol) => {
-	const depsMap = bucket.get(target);
+    const depsMap = bucket.get(target);
 
-	if (!depsMap) {
-		return;
-	}
-	const depsSet = depsMap.get(key);
+    if (!depsMap) {
+        return;
+    }
+    const depsSet = depsMap.get(key);
 
-	/**
-	 * Q: 为什么要重新生成一个set去迭代执行，不直接执行
-	 * A: 因为在执行函数时,会重新收集依赖，像set中添加，导致循环一直继续且重复。使用新Set迭代使得更新原set不导致新set不停止
-	 * Q: 为什么需要循环且不记录当前活跃函数（栈顶元素即为活跃函数）
-	 * A: 因为对于 i++ 情况来说, 先回取值调用 track 再调用 trigger 执行赋值操作，当前的活跃函数就是 i++ 操作，不应再次被加入副作用队列执行。否则会死循环
-	 */
-	const effectsToRun = new Set() as DepsSet;
-	for (let item of depsSet) {
-		if (item !== activeStack[0]) {
-			effectsToRun.add(item);
-		}
-	}
-	// @add 添加了触发调度器,当用户自定义了调度器则交给用户调用副作用，否则直接调用副作用
-	effectsToRun.forEach((fn) => {
-		if (fn.options.scheduler) {
-			fn.options.scheduler(fn);
-		} else {
-			fn();
-		}
-	});
+    /**
+     * Q: 为什么要重新生成一个set去迭代执行，不直接执行
+     * A: 因为在执行函数时,会重新收集依赖，像set中添加，导致循环一直继续且重复。使用新Set迭代使得更新原set不导致新set不停止
+     * Q: 为什么需要循环且不记录当前活跃函数（栈顶元素即为活跃函数）
+     * A: 因为对于 i++ 情况来说, 先回取值调用 track 再调用 trigger 执行赋值操作，当前的活跃函数就是 i++ 操作，不应再次被加入副作用队列执行。否则会死循环
+     */
+    const effectsToRun = new Set() as DepsSet;
+    for (let item of depsSet) {
+        if (item !== activeStack[0]) {
+            effectsToRun.add(item);
+        }
+    }
+    // @add 添加了触发调度器,当用户自定义了调度器则交给用户调用副作用，否则直接调用副作用
+    effectsToRun.forEach((fn) => {
+        if (fn.options.scheduler) {
+            fn.options.scheduler(fn);
+        } else {
+            fn();
+        }
+    });
 };
 
 const obj = new Proxy(data, {
-	get(target, key) {
-		track(target, key);
-		return target[key];
-	},
-	set(target, key, value) {
-		target[key] = value;
-		trigger(target, key);
-		return true;
-	},
+    get(target, key) {
+        track(target, key);
+        return target[key];
+    },
+    set(target, key, value) {
+        target[key] = value;
+        trigger(target, key);
+        return true;
+    },
 });
 
 // 被trigger后, 清除依赖中的自己，防止重复调用
 const cleanup = (effectFn: EffectFnType) => {
-	/**
-	 * Q: 为什么不直接length = 0 清空数组，就会被回收了，为什么需要循环删除？
-	 * A: 通过查看deps类型发现存储的是DepsSet数组, 这个是被存在依赖桶里的。依赖桶是存储所有依赖的桶, 在trigger被取出调用。若不清则会重复调用自己。
-	 * Q: 清除函数何时被调用？
-	 * A: 当被trigger后, 由于自身还在自己的deps中, 需要清除否则会重复调用
-	 */
-	effectFn.deps.forEach((fn) => fn.delete(effectFn));
-	effectFn.deps.length = 0;
+    /**
+     * Q: 为什么不直接length = 0 清空数组，就会被回收了，为什么需要循环删除？
+     * A: 通过查看deps类型发现存储的是DepsSet数组, 这个是被存在依赖桶里的。依赖桶是存储所有依赖的桶, 在trigger被取出调用。若不清则会重复调用自己。
+     * Q: 清除函数何时被调用？
+     * A: 当被trigger后, 由于自身还在自己的deps中, 需要清除否则会重复调用
+     */
+    effectFn.deps.forEach((fn) => fn.delete(effectFn));
+    effectFn.deps.length = 0;
 };
 
 /**
@@ -120,15 +120,15 @@ const cleanup = (effectFn: EffectFnType) => {
  * @add 添加options参数接收
  */
 const effect = (fn: () => void, options: EffectOptions = {}) => {
-	const effectFn: EffectFnType = () => {
-		cleanup(effectFn);
-		activeStack.unshift(effectFn);
-		fn();
-		activeStack.shift();
-	};
-	effectFn.deps = [];
-	effectFn.options = options;
-	effectFn();
+    const effectFn: EffectFnType = () => {
+        cleanup(effectFn);
+        activeStack.unshift(effectFn);
+        fn();
+        activeStack.shift();
+    };
+    effectFn.deps = [];
+    effectFn.options = options;
+    effectFn();
 };
 
 export {effect, obj};

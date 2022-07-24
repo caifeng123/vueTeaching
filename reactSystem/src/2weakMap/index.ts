@@ -6,10 +6,10 @@
 import {effect, obj} from "./effect";
 
 effect(() => {
-	document.body.innerText = obj.text;
+    document.body.innerText = obj.text;
 });
 let index = 0;
 
 setInterval(() => {
-	obj.text = `${obj.text}${index++}`;
+    obj.text = `${obj.text}${index++}`;
 }, 1000);

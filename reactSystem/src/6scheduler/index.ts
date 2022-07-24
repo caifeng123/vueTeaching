@@ -6,13 +6,13 @@
 import {effect, obj} from "./effect";
 
 effect(
-	() => {
-		console.log(obj.text);
-	},
-	// options ,尝试注释options查看打印区别
-	{
-		scheduler: (fn) => setTimeout(fn, 0),
-	}
+    () => {
+        console.log(obj.text);
+    },
+    // options ,尝试注释options查看打印区别
+    {
+        scheduler: (fn) => setTimeout(fn, 0),
+    }
 );
 obj.text = "变化";
 
