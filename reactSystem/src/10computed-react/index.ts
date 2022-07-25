@@ -11,7 +11,7 @@ const res = computed(() => {
 });
 
 document.body.innerText = `看日志中打印
-此时已经可以正确收集了
+计算属性作为依赖项时,能够被追踪实时响应，此时已经可以正确收集了
 `;
 
 effect(() => {

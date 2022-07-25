@@ -1,5 +1,5 @@
 /**
- * @file 依赖项不变时，缓存返回值不用重复调用
+ * @file 计算属性作为依赖项时,能够被追踪实时响应
  * @author caifeng01
  */
 
@@ -145,7 +145,7 @@ const computed = (fn: () => any) => {
         // 添加调度器，当调度器被调用时说明依赖项变化了被调用，因此需要重新缓存
         scheduler: () => {
             dirty = true;
-            // 手动触发temp.value 的所有依赖
+            // @add 手动触发temp.value 的所有依赖
             trigger(temp, "value");
         },
     });
@@ -157,7 +157,7 @@ const computed = (fn: () => any) => {
                 val = effectFn();
                 dirty = false;
             }
-            // 手动添加 temp.value 依赖, 当依赖项变化时才能实时相应自身发生变化
+            // @add 手动添加 temp.value 依赖, 当依赖项变化时才能实时相应自身发生变化
             track(temp, "value");
             return val;
         },
