@@ -5,7 +5,7 @@
 
 import {watch, obj} from "./effect";
 
-const res = watch(
+watch(
     () => obj.text,
     () => console.log("数据变了")
 );
