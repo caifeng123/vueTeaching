@@ -1,5 +1,5 @@
 /**
- * @file watch自定义函数中能以新旧值作为参数使用
+ * @file watch立即执行一次
  * @author caifeng01
  */
 
@@ -29,6 +29,10 @@ type DataType = Record<string | symbol, any>;
 type WatchValueMapType<T> = {
     new?: T;
     old?: T;
+};
+
+type WatchOptions = {
+    immediate?: boolean;
 };
 
 /**
@@ -172,10 +176,14 @@ const computed = (fn: () => any) => {
 };
 
 /**
- * watch监听obj内的所有数据,变化则会调用fn
+ * watch监听obj内的所有数据,变化则会调用fn @add 可添加immediate表示立即执行
  * @tips 对于effect来说, 内部的取值引用都会被记录。但要是没有引用则不会，因此需要在effect中递归调用所有数据
  */
-const watch = (source: any, fn: (newValue, oldValue) => any) => {
+const watch = (
+    source: any,
+    fn: (newValue, oldValue) => any,
+    option?: WatchOptions
+) => {
     // 递归调用所有引用值, seen存放所有引用过的值
     // 普通值和循环引用无需被调用（ps: 否则会无限循环溢出）
     const traverse = (source: any, seen = new Set()) => {
@@ -193,24 +201,32 @@ const watch = (source: any, fn: (newValue, oldValue) => any) => {
     const getter =
         typeof source === "function" ? source : () => traverse(source);
 
-    // @add 设置值存储,理论上这边类型应该是泛型，但为了省事直接any了
+    // 设置值存储,理论上这边类型应该是泛型，但为了省事直接any了
     // 存有先前一次的值和新的值
     let value = {} as WatchValueMapType<any>;
+
+    // 抽离调度函数, 动态调用手动执行
+    const scheduler = () => {
+        // 手动调用进行获取新值
+        value.new = lazyEffect();
+        fn(value.old, value.new);
+        // 新值变为老值下次使用
+        value.old = value.new;
+    };
+
     // 使用traverse递归调用obj, 当被引用到的值(所有值)变了调用scheduler
-    // @add 变成lazy手动调用执行，通过值专门存储对应的
+    // 变成lazy手动调用执行，通过值专门存储对应的
     const lazyEffect = effect(() => getter(), {
         lazy: true,
-        scheduler: () => {
-            // @add 手动调用进行获取新值
-            value.new = lazyEffect();
-            fn(value.old, value.new);
-            // @add 新值变为老值下次使用
-            value.old = value.new;
-        },
+        scheduler,
     });
 
-    // @add 首次直接运行，手动调用懒加载函数将得到的值存储到老值中
-    value.old = lazyEffect();
+    if (option.immediate) {
+        scheduler();
+    } else {
+        // 首次直接运行，手动调用懒加载函数将得到的值存储到老值中
+        value.old = lazyEffect();
+    }
 };
 
 export {obj, effect, computed, watch};
