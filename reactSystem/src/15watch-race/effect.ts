@@ -1,5 +1,5 @@
 /**
- * @file watch立即执行一次
+ * @file watch控制竞态问题
  * @author caifeng01
  */
 
@@ -176,13 +176,13 @@ const computed = (fn: () => any) => {
 };
 
 /**
- * watch监听obj内的所有数据,变化则会调用fn @add 可添加immediate表示立即执行
+ * watch监听obj内的所有数据,变化则会调用fn 可添加immediate表示立即执行
  * @tips 对于effect来说, 内部的取值引用都会被记录。但要是没有引用则不会，因此需要在effect中递归调用所有数据
  */
 const watch = (
     source: any,
-    fn: (newValue, oldValue) => any,
-    option?: WatchOptions
+    fn: (newValue, oldValue, onInvalidate) => any,
+    option: WatchOptions = {}
 ) => {
     // 递归调用所有引用值, seen存放所有引用过的值
     // 普通值和循环引用无需被调用（ps: 否则会无限循环溢出）
@@ -205,11 +205,21 @@ const watch = (
     // 存有先前一次的值和新的值
     let value = {} as WatchValueMapType<any>;
 
+    // @add 存储上次的清除函数, 在下次被effect执行时调用
+    let clean = null;
+
+    // @add 记录用户的过期函数
+    const onInvalidate = (fn) => {
+        clean = fn;
+    };
+
     // 抽离调度函数, 动态调用手动执行
     const scheduler = () => {
         // 手动调用进行获取新值
         value.new = lazyEffect();
-        fn(value.old, value.new);
+        // @add 添加过期数据处理, 下次调用前先执行上次的过期函数，防止多次执行
+        clean?.();
+        fn(value.old, value.new, onInvalidate);
         // 新值变为老值下次使用
         value.old = value.new;
     };
