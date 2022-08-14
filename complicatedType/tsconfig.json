@@ -5,12 +5,13 @@
         "target": "es6",
         "esModuleInterop": true,
         "sourceMap": true,
+        "module": "commonjs",
         "importHelpers": true,
         "baseUrl": ".",
         "paths": {
             "tslib": ["node_modules/tslib/tslib.d.ts"]
         }
     },
-    "include": ["./src/**/*"],
+    "include": ["src/**/*"],
     "exclude": ["node_modules"]
 }

@@ -1,9 +1,9 @@
 /**
- * @file Reflect反射替换原有直接读取\删除
+ * @file reactive演示
  * @author caifeng01
  */
 
-import {effect, reactive} from "./effect";
+import {effect, reactive} from "./myvue";
 
 const proxyObj = reactive({foo: 1, hehe: "xixi"});
 
