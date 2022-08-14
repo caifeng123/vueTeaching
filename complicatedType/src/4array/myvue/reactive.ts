@@ -117,6 +117,12 @@ const createReactive = (
 
 // 递归式生成响应式对象 - 深响应
 export const reactive = (obj: DataType) => {
+    /*
+     * 目的是对于arr.includes(arr[0])情况
+     * arr[0]会生成响应式 proxy1
+     * arr.includes 访问又会递归生成arr[0]的响应式 proxy2
+     * 两者不同因此永远返回 false
+     */
     if (reactiveMap.has(obj)) {
         return reactiveMap.get(obj);
     }
