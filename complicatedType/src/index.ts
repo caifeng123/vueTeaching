@@ -1,1 +1,2 @@
-import "./1reactive";
+// import "./1reactive";
+import "./2shallowReactive";
