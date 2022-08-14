@@ -1,6 +1,6 @@
 /**
  * @file: reactive 包裹对象生成响应式对象
- * @add 使用工厂函数
+ * @add 使用工厂函数添加 shallowReactive - 浅响应 与 reactive - 深响应区分
  * @author: caifeng01
  */
 
