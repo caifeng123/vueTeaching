@@ -1,12 +1,12 @@
 /**
- * @file reactive & shallowReactive 对比演示
+ * @file readonly & shallowReadonly 演示
  * @author caifeng01
  */
 
-import {effect, shallowReactive, reactive} from "./myvue";
+import {effect, shallowReadonly, readonly} from "./myvue";
 
-const shallowObj = shallowReactive({foo: {haha: 1}});
-const obj = reactive({foo: {haha: 1}});
+const shallowObj = shallowReadonly({foo: {haha: 1}});
+const obj = readonly({foo: {haha: 1}});
 
 effect(() => {
     console.log(
@@ -26,4 +26,7 @@ console.log(
 setTimeout(() => {
     shallowObj.foo.haha++;
     obj.foo.haha++;
+    console.info(
+        "但只在warning信息中有显示,因为readonly保证了都不进行追踪, 且深只读有响应"
+    );
 }, 4000);
