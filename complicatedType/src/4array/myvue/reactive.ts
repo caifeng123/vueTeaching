@@ -6,7 +6,14 @@
  * @author: caifeng01
  */
 
-import {ITERATE_KEY, TriggerType, track, trigger, DataType} from "./utils";
+import {
+    ITERATE_KEY,
+    TriggerType,
+    track,
+    trigger,
+    DataType,
+    reactiveMap,
+} from "./utils";
 
 // 提供对复杂类型包装的能力, 自由调用提供对应能力
 // isShallow - 深浅响应区分
@@ -31,7 +38,8 @@ const createReactive = (
                 return res;
             }
             // 如果当前非只读, 则进行追踪数据
-            if (!isReadonly) {
+            // @add 对于数组的for of循环来说, 会调用执行Symbol.iterator属性,因此此处会被阅读读取,此处避免掉symbol的追踪
+            if (!isReadonly && typeof key !== "symbol") {
                 track(target, key);
             }
             // 当前结果不是shallow且是对象，则需要递归响应式
@@ -81,9 +89,10 @@ const createReactive = (
         },
         // for(let i in obj) - for in循环
         // 底层调用EnumerateObjectProperties(obj) 内部会调用ownKeys获取自身键
+        // @add 当数组使用for in时,需要追踪新增与length = 0的情况, 因此需要追踪"length"key
         ownKeys(target) {
             // 追踪迭代器的key, 当迭代器变化时需要触发ITERATE_KEY对应函数, 因此此处添加追踪
-            track(target, ITERATE_KEY);
+            track(target, Array.isArray(target) ? "length" : ITERATE_KEY);
             return Reflect.ownKeys(target);
         },
         // delete a.b - 劫持删除操作
@@ -107,7 +116,14 @@ const createReactive = (
 };
 
 // 递归式生成响应式对象 - 深响应
-export const reactive = createReactive;
+export const reactive = (obj: DataType) => {
+    if (reactiveMap.has(obj)) {
+        return reactiveMap.get(obj);
+    }
+    const proxyObj = createReactive(obj);
+    reactiveMap.set(obj, proxyObj);
+    return proxyObj;
+};
 
 // 只对第一层生成响应式对象 - 浅响应
 export const shallowReactive = (obj: DataType) =>

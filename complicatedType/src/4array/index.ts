@@ -7,6 +7,8 @@ import {effect, reactive} from "./myvue";
 
 const arr = reactive([1]);
 
+console.log("初始化 -----");
+
 effect(() => {
     console.log(`数组arr[1] = ${arr[1]}`);
 });
@@ -19,12 +21,28 @@ effect(() => {
     console.log(`数组length = ${arr.length}`);
 });
 
+effect(() => {
+    console.log("for in遍历 start");
+    for (let i in arr) {
+        console.log(`key: ${i};value: ${arr[i]}`);
+    }
+    console.log("for in遍历 end");
+});
+
+effect(() => {
+    console.log("for of遍历 start");
+    for (let i of arr) {
+        console.log(`value: ${i}`);
+    }
+    console.log("for of遍历 end");
+});
+
 setTimeout(() => {
-    console.log("添加了数组第4项后");
+    console.log("添加了数组第4项后 -----");
     arr[4] = 0;
 }, 2000);
 
 setTimeout(() => {
-    console.log("清空了数组后");
+    console.log("清空了数组后 -----");
     arr.length = 0;
 }, 4000);

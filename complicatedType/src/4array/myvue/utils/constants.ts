@@ -13,3 +13,12 @@ export const bucket = new WeakMap<DataType, DepsMap>();
 
 // 活跃函数栈
 export let activeStack: EffectFnType[] = [];
+
+/**
+ * @add 存储响应式map, 防止相同索引重复生成多个响应式对象
+ * 目的是对于arr.includes(arr[0])情况
+ * arr[0]会生成响应式 proxy1
+ * arr.includes 访问又会递归生成arr[0]的响应式 proxy2
+ * 两者不同因此永远返回 false
+ */
+export const reactiveMap = new Map();
