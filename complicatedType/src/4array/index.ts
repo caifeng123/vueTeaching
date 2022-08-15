@@ -37,6 +37,9 @@ effect(() => {
     console.log("for of遍历 end");
 });
 
+const obj = {1: 2};
+const objArr = reactive([obj, obj]);
+
 setTimeout(() => {
     console.log("添加了数组第4项后 -----");
     arr[4] = 0;
@@ -46,3 +49,9 @@ setTimeout(() => {
     console.log("清空了数组后 -----");
     arr.length = 0;
 }, 4000);
+
+setTimeout(() => {
+    console.log(`调用includes直接检索值${objArr.includes(obj)}`);
+    console.log(`调用indexOf直接检索值${objArr.indexOf(obj)}`);
+    console.log(`调用lastIndexOf直接检索值${objArr.lastIndexOf(obj)}`);
+}, 6000);

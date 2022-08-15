@@ -13,6 +13,7 @@ import {
     trigger,
     DataType,
     reactiveMap,
+    ArrayCustomerFunc,
 } from "./utils";
 
 // 提供对复杂类型包装的能力, 自由调用提供对应能力
@@ -31,6 +32,15 @@ const createReactive = (
             if (key === "raw") {
                 return target;
             }
+
+            // 对部分数组方法调用进行拦截, 走自定义方法 - 作用详情看 ArrayCustomerFunc
+            if (
+                Array.isArray(target) &&
+                ArrayCustomerFunc.hasOwnProperty(key)
+            ) {
+                return Reflect.get(ArrayCustomerFunc, key, receiver);
+            }
+
             // 对获取值进行判断, 若是shallow响应则直接返回不做追踪
             const res = Reflect.get(target, key, receiver);
 
