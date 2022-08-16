@@ -1,3 +1,8 @@
+/**
+ * @file 静态公用数据
+ * @author caifeng01
+ */
+
 import {DataType, DepsMap, EffectFnType} from "./type";
 
 // 劫持迭代器用的key, 桶中作为迭代对象专用迭代key
@@ -22,3 +27,11 @@ export let activeStack: EffectFnType[] = [];
  * 两者不同因此永远返回 false
  */
 export const reactiveMap = new Map();
+
+/**
+ * 用来存储公用变量的索引对象
+ * esmodule 形式的对象是传递索引区别于 commonjs复制对象 因此可以同步数据用
+ */
+export const PUBLIC_MAP = {
+    shouldTrack: true,
+};

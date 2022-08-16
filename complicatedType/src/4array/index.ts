@@ -1,5 +1,5 @@
 /**
- * @file readonly & shallowReadonly 演示
+ * @file 演示
  * @author caifeng01
  */
 
@@ -55,3 +55,11 @@ setTimeout(() => {
     console.log(`调用indexOf直接检索值${objArr.indexOf(obj)}`);
     console.log(`调用lastIndexOf直接检索值${objArr.lastIndexOf(obj)}`);
 }, 6000);
+
+effect(() => {
+    arr.push(1);
+});
+
+effect(() => {
+    arr.push(1);
+});

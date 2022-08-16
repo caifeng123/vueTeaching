@@ -1,3 +1,8 @@
+/**
+ * @file 类型集合
+ * @author caifeng01
+ */
+
 export type EffectOptions = {
     lazy?: boolean;
     scheduler?: (fn: () => any) => void;

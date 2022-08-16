@@ -1,5 +1,10 @@
+/**
+ * @file track 收集依赖 & trigger 触发依赖
+ * @author caifeng01
+ */
+
 import {DataType, DepsMap, DepsSet, TriggerType} from "./type";
-import {activeStack, bucket, ITERATE_KEY} from "./constants";
+import {activeStack, bucket, ITERATE_KEY, PUBLIC_MAP} from "./constants";
 
 /**
  * @describe 收集依赖, 组成bucket依赖桶, 添加依赖set到活跃函数依赖deps中。因为此前会调用clean将依赖函数deps清空
@@ -7,6 +12,8 @@ import {activeStack, bucket, ITERATE_KEY} from "./constants";
  */
 export const track = (target: DataType, key: string | symbol) => {
     if (!activeStack.length) return;
+    // shouldTrack 对于数组push、pop等操作数组的方法 要避免掉读取length操作引发的无限循环
+    if (!PUBLIC_MAP.shouldTrack) return;
     let depsMap = bucket.get(target);
     if (!depsMap) {
         bucket.set(target, (depsMap = new Map() as DepsMap));
