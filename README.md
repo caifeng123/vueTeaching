@@ -5,7 +5,7 @@
 -   yarn dev 启动项目
 -   修改 packages/*/index.ts中的文件引用查看不同demo
 
-# vueTeaching
+## reactSystem
 
 从 0 -> 1 的基本响应式带写，effect、computed、watch
 
