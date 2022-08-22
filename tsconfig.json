@@ -3,6 +3,7 @@
         "allowSyntheticDefaultImports": true,
         "lib": ["dom", "es2021"],
         "target": "es6",
+        "moduleResolution": "Node",
         "esModuleInterop": true,
         "sourceMap": true,
         "importHelpers": true,
