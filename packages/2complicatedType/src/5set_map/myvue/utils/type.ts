@@ -16,9 +16,7 @@ export type EffectFnType = {
 
 export type DepsSet = Set<EffectFnType>;
 
-export type DepsMap = Map<string | symbol, DepsSet>;
-
-export type DataType = Record<string | symbol, any>;
+export type DepsMap = Map<any, DepsSet>;
 
 export type WatchValueMapType<T> = {
     new?: T;

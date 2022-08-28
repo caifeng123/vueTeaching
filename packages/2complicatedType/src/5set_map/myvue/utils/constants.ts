@@ -3,7 +3,7 @@
  * @author caifeng01
  */
 
-import {DataType, DepsMap, EffectFnType} from "./type";
+import {DepsMap, EffectFnType} from "./type";
 
 // 劫持迭代器用的key, 桶中作为迭代对象专用迭代key
 export const ITERATE_KEY = Symbol();
@@ -14,7 +14,7 @@ export const ITERATE_KEY = Symbol();
  * @set track添加, cleanup删除
  * @use 依赖项被trigger
  */
-export const bucket = new WeakMap<DataType, DepsMap>();
+export const bucket = new WeakMap<any, DepsMap>();
 
 // 活跃函数栈
 export let activeStack: EffectFnType[] = [];

@@ -3,7 +3,7 @@
  * @author caifeng01
  */
 
-import {PUBLIC_MAP} from "./constants";
+import {PUBLIC_MAP} from "..";
 
 const FIND_FUNC = [
     {
@@ -61,4 +61,4 @@ const ChangeFuncs = CHANGE_FUNC.reduce((all, funcName) => {
     return all;
 }, {});
 
-export const ArrayCustomerFunc = {...ChangeFuncs, ...FindFuncs};
+export const ArrayCustomFunc = {...ChangeFuncs, ...FindFuncs};

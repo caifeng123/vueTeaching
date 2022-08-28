@@ -11,16 +11,18 @@ import {
     TriggerType,
     track,
     trigger,
-    DataType,
     reactiveMap,
-    ArrayCustomerFunc,
+    getType,
+    ArrayCustomFunc,
+    SetCustomFunc,
+    MapCustomFunc,
 } from "./utils";
 
 // 提供对复杂类型包装的能力, 自由调用提供对应能力
 // isShallow - 深浅响应区分
 // isReadonly - 只读区分
 const createReactive = (
-    obj: DataType,
+    obj: any,
     {isShallow = false, isReadonly = false} = {}
 ) => {
     return new Proxy(obj, {
@@ -33,12 +35,43 @@ const createReactive = (
                 return target;
             }
 
-            // 对部分数组方法调用进行拦截, 走自定义方法 - 作用详情看 ArrayCustomerFunc
-            if (
-                Array.isArray(target) &&
-                ArrayCustomerFunc.hasOwnProperty(key)
-            ) {
-                return Reflect.get(ArrayCustomerFunc, key, receiver);
+            // Set: 对set进行处理
+            if (getType(target) === "Set") {
+                // 单独处理size属性: 因为size是一个属性访问器, 内部会访问原对象的属性对于代理对象上没有，因此会访问报错
+                // 所以获取size属性时,访问原对象的属性
+                if (key === "size") {
+                    // 由于size是一个属性(set.size), 访问后直接获取值。需要从原对象上获取，代理对象没有需要的内置属性
+                    // 对于set部分方法会导致size变化，需要单独对它进行跟踪
+                    track(target, ITERATE_KEY);
+                    return Reflect.get(target, key, target);
+                }
+                // 对于其他对象属性都是内置方法set.has()需要先获取到方法后 在调用执行。
+                // 但显然此时this对象为proxy。因此我们需要用bind将set.has这个函数与原target绑定
+                // return target[key].bind(target);
+                // 使用自定义的set方法，触发size的变化
+                return SetCustomFunc[key] ?? Set.prototype[key].bind(target);
+            }
+
+            // Map: 对map进行处理
+            if (getType(target) === "Map") {
+                // 单独处理size属性: 因为size是一个属性访问器, 内部会访问原对象的属性对于代理对象上没有，因此会访问报错
+                // 所以获取size属性时,访问原对象的属性
+                if (key === "size") {
+                    // 由于size是一个属性(map.size), 访问后直接获取值。需要从原对象上获取，代理对象没有需要的内置属性
+                    // 对于map.set方法会导致size变化，需要单独对它进行跟踪
+                    track(target, ITERATE_KEY);
+                    return Reflect.get(target, key, target);
+                }
+                // 对于其他对象属性都是内置方法set.has()需要先获取到方法后 在调用执行。
+                // 但显然此时this对象为proxy。因此我们需要用bind将set.has这个函数与原target绑定
+                // return target[key].bind(target);
+                // 使用自定义的set方法，触发size的变化
+                return MapCustomFunc[key] ?? Map.prototype[key].bind(target);
+            }
+
+            // Array: 对部分数组方法调用进行拦截, 走自定义方法 - 作用详情看 ArrayCustomerFunc
+            if (Array.isArray(target) && ArrayCustomFunc.hasOwnProperty(key)) {
+                return Reflect.get(ArrayCustomFunc, key, receiver);
             }
 
             // 对获取值进行判断, 若是shallow响应则直接返回不做追踪
@@ -126,7 +159,7 @@ const createReactive = (
 };
 
 // 递归式生成响应式对象 - 深响应
-export const reactive = (obj: DataType) => {
+export const reactive = (obj: any) => {
     /*
      * 目的是对于arr.includes(arr[0])情况
      * arr[0]会生成响应式 proxy1
@@ -142,13 +175,12 @@ export const reactive = (obj: DataType) => {
 };
 
 // 只对第一层生成响应式对象 - 浅响应
-export const shallowReactive = (obj: DataType) =>
+export const shallowReactive = (obj: any) =>
     createReactive(obj, {isShallow: true});
 
 // 只读深响应式
-export const readonly = (obj: DataType) =>
-    createReactive(obj, {isReadonly: true});
+export const readonly = (obj: any) => createReactive(obj, {isReadonly: true});
 
 // 只读浅响应式
-export const shallowReadonly = (obj: DataType) =>
+export const shallowReadonly = (obj: any) =>
     createReactive(obj, {isReadonly: true, isShallow: true});
