@@ -3,7 +3,7 @@
  * @author caifeng01
  */
 
-import {ITERATE_KEY, TriggerType, trigger} from "..";
+import {ITERATE_KEY, track, TriggerType, trigger, wrap} from "..";
 
 export const SetCustomFunc = {
     add<T>(key: T) {
@@ -23,5 +23,10 @@ export const SetCustomFunc = {
             trigger(target, key, TriggerType.DELETE);
         }
         return res;
+    },
+    forEach(callback, thisArg) {
+        const raw = this.raw;
+        track(raw, ITERATE_KEY);
+        raw.forEach((item) => callback.call(thisArg, wrap(item), this));
     },
 };
