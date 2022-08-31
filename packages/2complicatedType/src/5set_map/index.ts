@@ -5,9 +5,10 @@
 
 import {effect, reactive} from "./myvue";
 
-const set = new Set([2]);
+const set1 = new Set([1, 2, 3]);
+const set = new Set([set1]);
 
-const map = new Map([[1, set]]);
+const map = new Map([[1, set1]]);
 const setProxy = reactive(set);
 const mapProxy = reactive(map);
 
@@ -16,16 +17,23 @@ effect(() => {
     // console.log(mapProxy.size);
     // console.log(setProxy.size);
     // console.log(map);
-    setProxy.forEach(console.log);
+    // mapProxy.forEach((value) => {
+    //     console.log(value.size);
+    // });
+    // for (let [key, value] of mapProxy.entries()) {
+    //     console.log(key, value.size);
+    // }
+    for (let [key, value] of mapProxy) {
+        console.log(key, value.size);
+    }
 });
 // mapProxy.set(2, setProxy);
 setTimeout(() => {
-    // const set = mapProxy.get(1);
-    setProxy.add(1);
-    // setProxy.add(2);
-    // setProxy.delete(1);
+    //     // const set = mapProxy.get(1);
+    //     setProxy.forEach((value) => {
+    //         value.add(14);
+    //     });
+    // set1.add(21);
+    mapProxy.get(1).add(21);
+    //     // setProxy.delete(1);
 }, 1000);
-
-// setTimeout(() => {
-// mapProxy.set(2, 2);
-// }, 2000);

@@ -16,6 +16,7 @@ import {
     ArrayCustomFunc,
     SetCustomFunc,
     MapCustomFunc,
+    Type,
 } from "./utils";
 
 // 提供对复杂类型包装的能力, 自由调用提供对应能力
@@ -36,7 +37,7 @@ const createReactive = (
             }
 
             // Set: 对set进行处理
-            if (getType(target) === "Set") {
+            if (getType(target) === Type.Set) {
                 // 单独处理size属性: 因为size是一个属性访问器, 内部会访问原对象的属性对于代理对象上没有，因此会访问报错
                 // 所以获取size属性时,访问原对象的属性
                 if (key === "size") {
@@ -53,7 +54,7 @@ const createReactive = (
             }
 
             // Map: 对map进行处理
-            if (getType(target) === "Map") {
+            if (getType(target) === Type.Map) {
                 // 单独处理size属性: 因为size是一个属性访问器, 内部会访问原对象的属性对于代理对象上没有，因此会访问报错
                 // 所以获取size属性时,访问原对象的属性
                 if (key === "size") {

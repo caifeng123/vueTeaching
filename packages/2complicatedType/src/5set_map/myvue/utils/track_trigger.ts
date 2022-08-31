@@ -3,8 +3,9 @@
  * @author caifeng01
  */
 
-import {DepsMap, DepsSet, TriggerType} from "./type";
+import {DepsMap, DepsSet, TriggerType, Type} from "./type";
 import {activeStack, bucket, ITERATE_KEY, PUBLIC_MAP} from "./constants";
+import {getType} from "./utils";
 
 /**
  * @describe 收集依赖, 组成bucket依赖桶, 添加依赖set到活跃函数依赖deps中。因为此前会调用clean将依赖函数deps清空
@@ -50,8 +51,13 @@ export const trigger = (target, key, type?: TriggerType, newValue?) => {
         }
     });
 
-    // 对象赋值当触发类型为新增或删除时,需要触发迭代器函数
-    if (type !== TriggerType.SET) {
+    // 对象赋值当触发类型为新增或删除时,需要触发迭代器函数 【调用for in】
+    // 当Map调用循环时, 不仅和长度有关也能拿到value值, 因此需要在Map赋值时也进行迭代器的副作用触发
+    if (
+        type === TriggerType.ADD ||
+        type === TriggerType.DELETE ||
+        (type === TriggerType.SET && getType(target) === Type.Map)
+    ) {
         // 添加迭代器的effect触发
         const iterateSet = depsMap.get(ITERATE_KEY);
         iterateSet?.forEach((item) => {

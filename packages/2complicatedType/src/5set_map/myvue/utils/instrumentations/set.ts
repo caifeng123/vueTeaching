@@ -26,7 +26,9 @@ export const SetCustomFunc = {
     },
     forEach(callback, thisArg) {
         const raw = this.raw;
+        // 每次调用都会和size挂钩追踪变化 - 增删导致的size变化 重新调用forEach
         track(raw, ITERATE_KEY);
-        raw.forEach((item) => callback.call(thisArg, wrap(item), this));
+        // 触发原对象的forEach函数, 内部对象也设定为响应式
+        raw.forEach((item) => callback.apply(thisArg, [wrap(item), this]));
     },
 };
