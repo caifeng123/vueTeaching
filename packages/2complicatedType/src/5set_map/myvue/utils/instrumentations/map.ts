@@ -3,16 +3,23 @@
  * @author caifeng01
  */
 
-import {ITERATE_KEY, TriggerType, trigger, track, wrap} from "..";
+import {
+    ITERATE_KEY,
+    MAP_KEYS_ITERATE_KEY,
+    TriggerType,
+    trigger,
+    track,
+    wrap,
+} from "..";
 import {reactive} from "../..";
 
 function iterationMethod() {
     const raw = this.raw;
-    const iterator = raw[Symbol.iterator]();
+    const itr = raw[Symbol.iterator]();
     track(raw, ITERATE_KEY);
     return {
         next() {
-            const {value, done} = iterator.next();
+            const {value, done} = itr.next();
             return {
                 value: value?.map(wrap),
                 done,
@@ -66,4 +73,40 @@ export const MapCustomFunc = {
     },
     [Symbol.iterator]: iterationMethod,
     entries: iterationMethod,
+    values() {
+        const raw = this.raw;
+        const itr = raw.values();
+        track(raw, ITERATE_KEY);
+
+        return {
+            next() {
+                const {value, done} = itr.next();
+                return {
+                    value: wrap(value),
+                    done,
+                };
+            },
+            [Symbol.iterator]() {
+                return this;
+            },
+        };
+    },
+    keys() {
+        const raw = this.raw;
+        const itr = raw.keys();
+        track(raw, MAP_KEYS_ITERATE_KEY);
+
+        return {
+            next() {
+                const {value, done} = itr.next();
+                return {
+                    value: wrap(value),
+                    done,
+                };
+            },
+            [Symbol.iterator]() {
+                return this;
+            },
+        };
+    },
 };

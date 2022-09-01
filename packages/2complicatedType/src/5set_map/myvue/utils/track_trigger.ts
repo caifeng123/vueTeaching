@@ -4,7 +4,13 @@
  */
 
 import {DepsMap, DepsSet, TriggerType, Type} from "./type";
-import {activeStack, bucket, ITERATE_KEY, PUBLIC_MAP} from "./constants";
+import {
+    activeStack,
+    bucket,
+    ITERATE_KEY,
+    MAP_KEYS_ITERATE_KEY,
+    PUBLIC_MAP,
+} from "./constants";
 import {getType} from "./utils";
 
 /**
@@ -60,6 +66,20 @@ export const trigger = (target, key, type?: TriggerType, newValue?) => {
     ) {
         // 添加迭代器的effect触发
         const iterateSet = depsMap.get(ITERATE_KEY);
+        iterateSet?.forEach((item) => {
+            if (item !== activeStack[0]) {
+                effectsToRun.add(item);
+            }
+        });
+    }
+
+    // 对于Map迭代keys时, 新增删除触发对应keys变化，但对于set不做操作。和上面做区分
+    if (
+        (type === TriggerType.ADD || type === TriggerType.DELETE) &&
+        getType(target) === Type.Map
+    ) {
+        // 添加迭代器的effect触发
+        const iterateSet = depsMap.get(MAP_KEYS_ITERATE_KEY);
         iterateSet?.forEach((item) => {
             if (item !== activeStack[0]) {
                 effectsToRun.add(item);

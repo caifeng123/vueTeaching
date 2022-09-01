@@ -9,6 +9,11 @@ import {DepsMap, EffectFnType} from "./type";
 export const ITERATE_KEY = Symbol();
 
 /**
+ * 劫持迭代器用的key, 桶中作为Map keys()专用迭代key
+ */
+export const MAP_KEYS_ITERATE_KEY = Symbol();
+
+/**
  * @describe 依赖桶，存储所有数据&所有依赖关系
  * weakMap: <[target对象]: map<[key路径]: Set<EffectFnType>[]>>
  * @set track添加, cleanup删除
