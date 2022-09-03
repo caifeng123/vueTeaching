@@ -77,14 +77,14 @@ const createReactive = (
 
             // 对获取值进行判断, 若是shallow响应则直接返回不做追踪
             const res = Reflect.get(target, key, receiver);
-
-            if (isShallow) {
-                return res;
-            }
             // 如果当前非只读, 则进行追踪数据
             // 对于数组的for of循环来说, 会调用执行Symbol.iterator属性,因此此处会被阅读读取,此处避免掉symbol的追踪
             if (!isReadonly && typeof key !== "symbol") {
                 track(target, key);
+            }
+
+            if (isShallow) {
+                return res;
             }
             // 当前结果不是shallow且是对象，则需要递归响应式
             // 当判断是 非浅只读时进行深递归操作

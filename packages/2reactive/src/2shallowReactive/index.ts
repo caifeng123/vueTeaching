@@ -19,7 +19,7 @@ effect(() => {
 });
 console.log(
     `%c起初值都为 {foo: {haha: 1}}
-4s后shallowObj.foo.haha和obj.foo.haha都变了`,
+ 4s后shallowObj.foo.haha和obj.foo.haha都变了,但只打印深响应`,
     "color: red"
 );
 

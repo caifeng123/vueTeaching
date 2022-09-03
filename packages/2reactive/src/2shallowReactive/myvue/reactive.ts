@@ -19,10 +19,10 @@ const createReactive = (obj: DataType, isShallow = false) => {
             }
             // @add 对获取值进行判断, 若是shallow响应则直接返回不做追踪
             const res = Reflect.get(target, key, receiver);
+            track(target, key);
             if (isShallow) {
                 return res;
             }
-            track(target, key);
             // @add 当前结果不是shallow且是对象，则需要递归响应式
             if (typeof res === "object" && res !== null) {
                 return reactive(res);
