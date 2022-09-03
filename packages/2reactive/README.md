@@ -253,3 +253,84 @@ if (getType(key) !== Type.Symbol) {
 
 ### 5、Set & Map
 
+> 都是复杂类型，基本逻辑可复用原先的对象代理，但和Array一样，部分特殊函数需要特殊处理
+
+#### size
+
+**问题**
+
+> 对于set&map数据结构来说，size就和array.length一样，会和整体的key体积挂钩。
+
+按照原有逻辑写的demo，发现直接读取size会报错
+
+![image-20220903221731755](/Users/caifeng01/Library/Application Support/typora-user-images/image-20220903221731755.png)
+
+这是由于size是一个属性访问器, 内部会访问原对象的属性对于代理对象上没有
+
+**解决**
+
+和[Array处理find查找类函数](#find查找类函数)一样，代理对象取不到，则直接从target上获取
+
+```js
+// 对set进行处理
+if (getType(target) === Type.Set || getType(target) === Type.Map) {
+    if (key === "size") {
+        // 对于set部分方法会导致size变化，需要单独对它进行跟踪。类似与array的length属性
+        track(target, ITERATE_KEY);
+        return Reflect.get(target, key, target); // 也可以是target[key]或target.size
+    }
+}
+```
+
+此时就不再会报错了
+
+![image-20220903222603279](/Users/caifeng01/Library/Application Support/typora-user-images/image-20220903222603279.png)
+
+
+
+#### 其他函数
+
+当调用add、delete的赋值函数时，还是报this指针不对的问题(receiver就是Reflect/proxy - this指针)
+
+![image-20220903223145821](/Users/caifeng01/Library/Application Support/typora-user-images/image-20220903223145821.png)
+
+原因是对于 `proxy.add(2)` 方法，先会去获取 `proxy.add` 函数，再去执行这个函数，此时执行时的this指针又被指向为了调用者 即`proxy`对象。因此此时得强行设置this指针，才能正确执行
+
+![image-20220903224517550](/Users/caifeng01/Library/Application Support/typora-user-images/image-20220903224517550.png)
+
+
+
+##### Add&Delete
+
+> 类似数组的增删情况，肯定会影响到size属性，因此我们需要触发size属性对应的依赖函数集合。
+>
+> 只有真正增删成功时，再去触发，减少无效执行
+
+```ts
+add<T>(key: T) {
+    const target = this.raw as Set<T>;
+    const hasValue = target.has(key);
+    const res = target.add(key);
+    if (!hasValue) {
+      	// 触发size已经集合在ADD触发中
+        trigger(target, key, TriggerType.ADD);
+    }
+    return res;
+},
+delete<T>(key: T) {
+		const target = this.raw as Set<T>;
+		const hasValue = target.has(key);
+		const res = target.delete(key);
+		if (hasValue) {
+        // 触发size已经集合在DELETE触发中
+				trigger(target, key, TriggerType.DELETE);
+		}
+		return res;
+}
+```
+
+
+
+##### ForEach
+
+> 
