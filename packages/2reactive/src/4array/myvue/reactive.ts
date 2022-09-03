@@ -69,9 +69,9 @@ const createReactive = (
                 return true;
             }
             const type = Array.isArray(target)
-                ? target.length > Number(key)
-                    ? TriggerType.SET
-                    : TriggerType.ADD
+                ? target.length <= Number(key)
+                    ? TriggerType.ADD
+                    : TriggerType.SET
                 : Object.prototype.hasOwnProperty.call(target, key)
                 ? TriggerType.SET
                 : TriggerType.ADD;

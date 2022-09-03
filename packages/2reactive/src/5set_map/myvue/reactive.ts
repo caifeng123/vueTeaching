@@ -79,7 +79,7 @@ const createReactive = (
             const res = Reflect.get(target, key, receiver);
             // 如果当前非只读, 则进行追踪数据
             // 对于数组的for of循环来说, 会调用执行Symbol.iterator属性,因此此处会被阅读读取,此处避免掉symbol的追踪
-            if (!isReadonly && typeof key !== "symbol") {
+            if (!isReadonly && getType(key) !== Type.Symbol) {
                 track(target, key);
             }
 
@@ -102,9 +102,9 @@ const createReactive = (
                 return true;
             }
             const type = Array.isArray(target)
-                ? target.length > Number(key)
-                    ? TriggerType.SET
-                    : TriggerType.ADD
+                ? target.length <= Number(key)
+                    ? TriggerType.ADD
+                    : TriggerType.SET
                 : Object.prototype.hasOwnProperty.call(target, key)
                 ? TriggerType.SET
                 : TriggerType.ADD;
