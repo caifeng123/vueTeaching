@@ -10,6 +10,7 @@ import {
     trigger,
     track,
     wrap,
+    isChanged,
 } from "..";
 import {reactive} from "../..";
 
@@ -42,11 +43,8 @@ export const MapCustomFunc = {
         if (!has) {
             trigger(target, key, TriggerType.ADD);
         }
-        // 当存在且值被改变(新旧非null)
-        else if (
-            oldValue !== newValue &&
-            (oldValue === oldValue || newValue === newValue)
-        ) {
+        // 当存在且值被改变
+        else if (isChanged(oldValue, newValue)) {
             trigger(target, key, TriggerType.SET);
         }
         return res;
@@ -57,10 +55,18 @@ export const MapCustomFunc = {
         track(target, key);
         if (has) {
             const value = target.get(key);
-            // 对map递归生成响应式对象，即对Map<string, obj> 修改obj也会响应式
+            // 对map值生成响应式对象，即对Map<string, obj> 修改obj也会响应式
             return typeof value === "object" ? reactive(value) : value;
         }
         return;
+    },
+    delete(key) {
+        const target = this.raw;
+        const res = target.delete(key);
+        if(res) {
+            trigger(target, key, TriggerType.DELETE)
+        }
+        return res;
     },
     forEach(callback, thisArg) {
         const raw = this.raw;

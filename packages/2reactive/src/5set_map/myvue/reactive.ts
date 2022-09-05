@@ -17,6 +17,7 @@ import {
     SetCustomFunc,
     MapCustomFunc,
     Type,
+    isChanged,
 } from "./utils";
 
 // 提供对复杂类型包装的能力, 自由调用提供对应能力
@@ -116,10 +117,7 @@ const createReactive = (
             if (target === receiver.raw) {
                 // 老值与新值不等时才触发副作用, 减少无效副作用
                 // 为处理 NaN !== NaN 需要单独处理
-                if (
-                    oldValue !== value &&
-                    (oldValue === oldValue || value === value)
-                ) {
+                if (isChanged(oldValue, value)) {
                     trigger(target, key, type, value);
                 }
             }
