@@ -1,6 +1,6 @@
 # 使用
 
--   最外层 `lerna bootstrap # 安装依赖`
+-   最外层 `npx lerna bootstrap # 安装依赖`
 -   cd packages/*
 -   yarn dev 启动项目
 -   修改 packages/*/index.ts中的文件引用查看不同demo
