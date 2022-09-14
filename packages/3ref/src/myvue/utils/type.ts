@@ -50,3 +50,12 @@ export enum Type {
     Date = "Date",
     Array = "Array",
 }
+
+export type BasicType =
+    | string
+    | number
+    | boolean
+    | bigint
+    | null
+    | undefined
+    | symbol;
