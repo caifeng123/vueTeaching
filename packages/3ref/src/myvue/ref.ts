@@ -50,7 +50,7 @@ export const toRefs = (proxy) => {
 
 /**
  * 判断是否为ref, 无需手动取值
- * 用着html中直接取值，自动脱ref
+ * 用在html中直接取值，自动脱ref
  */
 export const proxyRefs = (proxy) =>
     new Proxy(proxy, {
