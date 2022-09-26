@@ -28,7 +28,7 @@ export const createRenderer = ({
     // 挂载节点
     const mountElement = (vnode, container) => {
         const {type, children, props} = vnode;
-        const element = createElement(vnode.type);
+        const element = (vnode.el = createElement(vnode.type));
         const Mount_Node_MAP = {
             string: () => setElementText(element, children),
             array: () =>
@@ -39,15 +39,38 @@ export const createRenderer = ({
         Mount_Node_MAP[typeof children]();
         if (props) {
             for (const key in props) {
-                patchProps(element, key, props[key]);
+                patchProps(element, key, null, props[key]);
             }
         }
         insert(element, container);
     };
+    // 卸载节点
+    const unmount = (vnode) => {
+        const {parentNode} = vnode.el;
+        if (parentNode) parentNode.remove(vnode.el);
+    };
     // 更新节点
-    const patch = (oldVNode, newVNode, container) => {
-        if (!oldVNode) {
-            mountElement(newVNode, container);
+    const patchElement = (oldVnode, newVnode) => {
+        // patchProps()
+    };
+    // 处理前后节点
+    const patch = (oldVnode, newVnode, container) => {
+        // 处理前后vnode类型不同情况div -> input 先卸载在挂载
+        if (oldVnode && oldVnode.type !== newVnode.type) {
+            unmount(oldVnode);
+            oldVnode = null;
+        }
+        const {type} = newVnode;
+        // 处理普通标签情况
+        if (typeof type === "string") {
+            if (!oldVnode) {
+                mountElement(newVnode, container);
+            } else {
+                patchElement(oldVnode, newVnode);
+            }
+        }
+        // 自定义组件情况
+        if (typeof type === "object") {
         }
     };
     // 渲染
@@ -55,7 +78,7 @@ export const createRenderer = ({
         if (vnode) {
             patch(container._vnode, vnode, container);
         } else if (container._vnode) {
-            container.innerHTML = "";
+            unmount(container._vnode);
         }
         container._vnode = vnode;
     };
@@ -73,29 +96,56 @@ createRenderer({
     // 向容器中追加节点
     insert: (element, container) => container.appendChild(element),
     // 对新节点做更新
-    patchProps: (element: Element, propKey, propValue) => {
-        // 设置属性若是标签自带属性则使用赋值，其他使用setAttribute方式
-        // 原因参考 input.value 与 input.setAttribute() 差异
-        // 前者能修改value后者不行。setAttribute是设置初始值
-        // 并且要处理不可变标签值
-
+    // 设置属性若是标签自带属性则使用赋值，其他使用setAttribute方式
+    // 原因参考 input.value 与 input.setAttribute() 差异
+    // 前者能修改value后者不行。setAttribute是设置初始值
+    // 并且要处理不可变标签值
+    patchProps: (
+        element: Element & Record<string, any>,
+        propKey: string,
+        preValue,
+        nowValue
+    ) => {
+        // 处理自定义事件
+        if (propKey.startsWith("on")) {
+            const invokers = element._invokers ?? (element._invokers = {});
+            const rowKey = propKey.slice(2).toLowerCase();
+            // let invoker = invokers[rowKey];
+            // 新方法挂载
+            // if (nowValue) {
+            // 不存在说明首次加载, 创建invoker函数, 并添加新的事件挂载
+            if (!invokers[rowKey]) {
+                invokers[rowKey] = (...arr) => {
+                    invokers[rowKey].value.map((x) => x?.(...arr));
+                };
+                element.addEventListener(rowKey, invokers[rowKey]);
+            }
+            // 将新值自动变为数组型, 用于直接触发
+            invokers[rowKey].value = Array.isArray(nowValue)
+                ? nowValue
+                : [nowValue];
+            // }
+            // 无新方法, 需要移除
+            // else {
+            // }
+        }
         // class样式组件特殊处理
         if (propKey === "class") {
-            // element.className = normalizeClass(propValue);
-            element.className = propValue;
+            // element.className = normalizeClass(nowValue);
+            element.className = nowValue;
         }
         // 标签属性且不是不可变属性,直接赋值
         else if (shouldSetAsProps(element, propKey)) {
             // 对于判断布尔值的需要挑出处理
             // 比如: [disabled] => [disabled: ''] 预期生效为true
             // 但实际[input.disabled = ''] => [input.disabled = false]
-            if (typeof element[propKey] === "boolean" && propValue === "") {
+            if (typeof element[propKey] === "boolean" && nowValue === "") {
                 element[propKey] = true;
             } else {
-                element[propKey] = propValue;
+                element[propKey] = nowValue;
             }
         } else {
-            element.setAttribute(propKey, propValue);
+            element.setAttribute(propKey, nowValue);
         }
     },
 });
