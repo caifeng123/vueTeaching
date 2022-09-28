@@ -24,6 +24,7 @@ export const createRenderer = ({
     setElementText,
     insert,
     patchProps,
+    patchChildren,
 }) => {
     // 挂载节点
     const mountElement = (vnode, container) => {
@@ -51,7 +52,21 @@ export const createRenderer = ({
     };
     // 更新节点
     const patchElement = (oldVnode, newVnode) => {
-        // patchProps()
+        const el = (oldVnode.el = newVnode.el);
+
+        // 处理props
+        const oldProps = oldVnode.props;
+        const newProps = newVnode.props;
+        // 获取前后props的key
+        const allKeys = Object.keys({...oldProps, ...newProps});
+        for (const key of allKeys) {
+            if (newProps[key] !== oldProps[key]) {
+                patchProps(el, key, oldProps[key], newProps[key]);
+            }
+        }
+
+        // 处理children
+        patchChildren(oldVnode, newVnode, el);
     };
     // 处理前后节点
     const patch = (oldVnode, newVnode, container) => {
@@ -110,24 +125,21 @@ createRenderer({
         if (propKey.startsWith("on")) {
             const invokers = element._invokers ?? (element._invokers = {});
             const rowKey = propKey.slice(2).toLowerCase();
-            // let invoker = invokers[rowKey];
-            // 新方法挂载
-            // if (nowValue) {
             // 不存在说明首次加载, 创建invoker函数, 并添加新的事件挂载
             if (!invokers[rowKey]) {
-                invokers[rowKey] = (...arr) => {
-                    invokers[rowKey].value.map((x) => x?.(...arr));
+                invokers[rowKey] = (e) => {
+                    // 保证触发时间在注册时间之后
+                    if (e.timeStamp < invokers[rowKey].attached) return;
+                    invokers[rowKey].value.map((x) => x?.(e));
                 };
                 element.addEventListener(rowKey, invokers[rowKey]);
             }
+            // 注册函数时同时添加
+            invokers[rowKey].attached = performance.now();
             // 将新值自动变为数组型, 用于直接触发
             invokers[rowKey].value = Array.isArray(nowValue)
                 ? nowValue
                 : [nowValue];
-            // }
-            // 无新方法, 需要移除
-            // else {
-            // }
         }
         // class样式组件特殊处理
         if (propKey === "class") {
@@ -148,4 +160,5 @@ createRenderer({
             element.setAttribute(propKey, nowValue);
         }
     },
+    patchChildren: (oldVnode, newVnode, el) => {},
 });
