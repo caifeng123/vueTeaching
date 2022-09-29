@@ -3,6 +3,7 @@
  * 适配于各种环境(spa、服务端渲染)
  */
 
+import {getType, Type} from "@/utils";
 import {normalizeClass, shouldSetAsProps} from "./utils";
 
 // const vnode = {
@@ -24,8 +25,36 @@ export const createRenderer = ({
     setElementText,
     insert,
     patchProps,
-    patchChildren,
 }) => {
+    // 更新children
+    const patchChildren = (oldVnode, newVnode, container) => {
+        const oldChildren = oldVnode.children;
+        const newChildren = newVnode.children;
+        const oldChildrenType = getType(oldChildren);
+        const newChildrenType = getType(newChildren);
+        // 类型只有string | array两种
+        // 当相同时 string 直接赋值 array进行diff
+        if (oldChildrenType === newChildrenType) {
+            if (oldChildrenType === Type.String) {
+                setElementText(container, newChildren);
+            } else {
+                // diff算法
+                // 此处朴素做法全删再全加
+                oldChildren.forEach(unmount);
+                newChildren.forEach((el) => mountElement(el, container));
+            }
+        }
+        // 不同时 老string则删除挂载新数组，老array先卸载再挂载文本
+        else {
+            if (oldChildrenType === Type.String) {
+                setElementText(container, "");
+                newChildren.forEach((el) => mountElement(el, container));
+            } else {
+                oldChildren.forEach(unmount);
+                setElementText(container, newChildren);
+            }
+        }
+    };
     // 挂载节点
     const mountElement = (vnode, container) => {
         const {type, children, props} = vnode;
@@ -160,5 +189,4 @@ createRenderer({
             element.setAttribute(propKey, nowValue);
         }
     },
-    patchChildren: (oldVnode, newVnode, el) => {},
 });
