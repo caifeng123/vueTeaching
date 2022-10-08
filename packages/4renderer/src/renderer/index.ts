@@ -4,6 +4,7 @@
  */
 
 import {getType, Type} from "@/utils";
+import {VNODE_TYPE} from "./constants";
 import {normalizeClass, shouldSetAsProps} from "./utils";
 
 // const vnode = {
@@ -25,6 +26,8 @@ export const createRenderer = ({
     setElementText,
     insert,
     patchProps,
+    createText,
+    setText,
 }) => {
     // 更新children
     const patchChildren = (oldVnode, newVnode, container) => {
@@ -76,6 +79,11 @@ export const createRenderer = ({
     };
     // 卸载节点
     const unmount = (vnode) => {
+        // Fragment类型需要卸载所有
+        if (vnode.type === VNODE_TYPE.FRAGMENT) {
+            vnode.children.forEach(unmount);
+            return;
+        }
         const {parentNode} = vnode.el;
         if (parentNode) parentNode.remove(vnode.el);
     };
@@ -106,13 +114,43 @@ export const createRenderer = ({
         }
         const {type} = newVnode;
         // 处理普通标签情况
-        if (typeof type === "string") {
+        if (getType(type) === Type.String) {
             if (!oldVnode) {
                 mountElement(newVnode, container);
             } else {
                 patchElement(oldVnode, newVnode);
             }
         }
+        const TEXT_NODE = {
+            // 处理文本节点
+            [VNODE_TYPE.TEXT]: () => {
+                // 当老节点不存在生成一个TextNode
+                if (!oldVnode) {
+                    const element = (newVnode.el = createText(
+                        newVnode.children
+                    ));
+                    insert(element, container);
+                } else {
+                    // 存在直接用nodeValue赋值替换
+                    const element = (newVnode.el = oldVnode.el);
+                    if (oldVnode.children !== newVnode.children) {
+                        setText(element, newVnode.children);
+                    }
+                }
+            },
+            [VNODE_TYPE.FRAGMENT]: () => {
+                if (!oldVnode) {
+                    // 没有老节点则将所有节点都直接新增到当前容器中
+                    newVnode.children.forEach((element) =>
+                        patch(null, element, container)
+                    );
+                } else {
+                    // 更新所有children
+                    patchChildren(oldVnode, newVnode, container);
+                }
+            },
+        };
+        TEXT_NODE[type]?.();
         // 自定义组件情况
         if (typeof type === "object") {
         }
@@ -133,17 +171,25 @@ export const createRenderer = ({
 
 // 浏览器端方式
 createRenderer({
-    // 创建节点
+    /**
+     * 创建节点
+     */
     createElement: document.createElement,
-    // 设置文本节点信息
+    /*
+     * 设置文本节点信息
+     */
     setElementText: (element, text) => (element.text = text),
-    // 向容器中追加节点
+    /**
+     * 向容器中追加节点
+     */
     insert: (element, container) => container.appendChild(element),
-    // 对新节点做更新
-    // 设置属性若是标签自带属性则使用赋值，其他使用setAttribute方式
-    // 原因参考 input.value 与 input.setAttribute() 差异
-    // 前者能修改value后者不行。setAttribute是设置初始值
-    // 并且要处理不可变标签值
+    /**
+     * 对新节点做更新
+     * 设置属性若是标签自带属性则使用赋值，其他使用setAttribute方式
+     * 原因参考 input.value 与 input.setAttribute() 差异
+     * 前者能修改value后者不行。setAttribute是设置初始值
+     * 并且要处理不可变标签值
+     */
     patchProps: (
         element: Element & Record<string, any>,
         propKey: string,
@@ -189,4 +235,12 @@ createRenderer({
             element.setAttribute(propKey, nowValue);
         }
     },
+    /**
+     * 创建纯文本
+     */
+    createText: document.createTextNode,
+    /**
+     * 修改纯文本
+     */
+    setText: (element, text) => (element.nodeValue = text),
 });
