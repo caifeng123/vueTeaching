@@ -91,6 +91,70 @@ export const createRenderer = ({
             }
         }
     }
+    const twiceDiff = (oldChildren, newChildren, container) => {
+        let oldStart = 0;
+        let oldEnd = oldChildren.length - 1;
+        let newStart = 0;
+        let newEnd = newChildren.length - 1;
+
+        while (oldStart <= oldEnd && newStart <= newEnd) {
+            const oldStartVnode = oldChildren[oldStart];
+            const oldEndVnode = oldChildren[oldEnd];
+            const newStartVnode = newChildren[newStart];
+            const newEndVnode = newChildren[newEnd];
+
+            // 1.复用key
+            if (oldStartVnode.key === newStartVnode.key) {
+                // 新老start相同 无需换位置
+
+                // 统一新老node - 两者指向统一,参数更新
+                patch(oldStartVnode, newStartVnode, container);
+                oldStart++;
+                newStart++;
+            } else if (oldEndVnode.key === newEndVnode.key) {
+                // 新老start相同 无需换位置
+
+                // 统一新老node - 两者指向统一,参数更新
+                patch(oldEndVnode, newEndVnode, container);
+                oldEnd--;
+                newEnd--;
+            } else if (oldStartVnode.key === newEndVnode.key) {
+                // 老start新end相同 需要将start拽到当前未排序的队列最下面[newEnd的后面一个]使得位置变为未排序最后一个
+
+                // 统一新老node - 两者指向统一,参数更新
+                patch(oldStartVnode, newEndVnode, container);
+                // 将当前dom移动到老末尾dom的后面
+                insert(newEndVnode.el, oldEndVnode.el, 'afterend');
+                oldStart++;
+                newEnd--;
+            } else if (oldEndVnode.key === newStartVnode.key) {
+                // 老end新start相同 需要将end拽到当前未排序的队列最前面[newStart最前面]使得位置变为未排序第一个
+
+                patch(oldEndVnode, newStartVnode, container);
+                // 将当前dom移动到老起始dom之前
+                insert(newStartVnode.el, oldStartVnode.el, 'beforebegin');
+                oldEnd--;
+                newStart++;
+            } else {
+                // 2.四个可选的key都没命中,则按原先操作获取dom
+                const indInOld = oldChildren.findIndex(({key}) => key === newStartVnode.key);
+                if (indInOld > 0) {
+                    // 2.1找到了则需要进行更新+移动操作
+                    const oldVnode = oldChildren[indInOld];
+                    // 2.1.1更新
+                    patch(oldVnode, newStartVnode, container);
+                    // 2.1.2移动 - 把最新节点移动到对位start dom的前面
+                    insert(newStartVnode.el, oldStartVnode.el, 'beforebegin');
+                    // 清空原dom点，防止后面继续比较
+                    oldChildren[indInOld] = undefined;
+                }else{
+                    // 2.2 没找到需要新增
+                    patch(null, newStartVnode, oldStartVnode.el, 'beforebegin');
+                }
+                newStart++;
+            }
+        }
+    }
     // 更新children
     const patchChildren = (oldVnode, newVnode, container) => {
         const oldChildren = oldVnode.children;
@@ -110,6 +174,8 @@ export const createRenderer = ({
                 // 2、简单diff算法
                 easyDiff(oldChildren, newChildren, container);
 
+                // 3、双端diff
+                twiceDiff(oldChildren, newChildren, container);
             }
         }
         // 不同时 老string则删除挂载新数组，老array先卸载再挂载文本
@@ -253,7 +319,7 @@ export const client = createRenderer({
 
         // 2、为满足定位模式, 当anchor为空时直接追加在最后
         // container.insertBefore(element, anchor)
-        
+
         // 3、学习一个添加元素的api insertAdjacentElement
         anchorElement.insertAdjacentElement(position, element);
     },
