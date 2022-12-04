@@ -15,3 +15,15 @@ export const VNODE_TYPE = {
      */
     FRAGMENT: Symbol(),
 };
+
+/**
+ * 使用insertAdjacentElement插入dom插入位置
+ * <!-- beforebegin -->
+ * <p>
+ * <!-- afterbegin -->
+ *     foo
+ * <!-- beforeend -->
+ * </p>
+ * <!-- afterend -->
+ */
+export type PositionType = 'afterbegin' | 'afterend' | 'beforebegin' | 'beforeend';

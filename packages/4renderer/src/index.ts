@@ -4,13 +4,15 @@
  */
 
 import {effect, ref} from "./reactivity";
+import {client} from "./renderer";
 
-const num = ref(1);
+// const num = ref(1);
 
-effect(() => {
-    console.log(num.value);
-});
+// effect(() => {
+//     console.log(num.value);
+// });
 
-setTimeout(() => {
-    num.value = 10;
-}, 1000);
+// setTimeout(() => {
+//     num.value = 10;
+// }, 1000);
+// client.render();

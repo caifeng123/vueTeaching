@@ -4,7 +4,7 @@
  */
 
 import {getType, Type} from "@/utils";
-import {VNODE_TYPE} from "./constants";
+import {VNODE_TYPE, PositionType} from "./constants";
 import {normalizeClass, shouldSetAsProps} from "./utils";
 
 // const vnode = {
@@ -29,6 +29,68 @@ export const createRenderer = ({
     createText,
     setText,
 }) => {
+    // 简单diff算法
+    const easyDiff = (oldChildren, newChildren, container) => {
+        // 最后操作的数值
+        let lastIndex = 0;
+        // 1、迭代newChildren确保新数据都被挂载
+        for(let i = 0;i < newChildren.length;i++) {
+            const newVnode = newChildren[i];
+            // 用来判断当前新节点是否能复用
+            let hasOldNode = false;
+            for(let j = 0;j < oldChildren;j++) {
+                const oldVnode = oldChildren[j];
+                // 只有key相同!可复用
+                if(newVnode.key === oldVnode.key) {
+
+                    hasOldNode = true;
+                    // 更新同key的新老节点
+                    patch(oldVnode, newVnode, container);
+
+                    // 是否要移动当前挂载位置
+                    if(j < lastIndex) {
+                        // 若小于当前挂载最后位置，则说明需要移动
+                        // - 获取上一个真实节点
+                        //   - 若存在则需要移动到最后一个位置
+                        //   - 不存在则说明顺序正确
+
+                        // 获取newVnode的前一个vnode
+                        const prevVnode = newChildren[i - 1];
+                        // 若第一个则没有前节点不需要调整位置
+                        if(prevVnode) {
+                            // 在prevVnode真实dom后添加上新vnode节点
+                            insert(newVnode.el, prevVnode.el, 'afterend')
+                        }
+                    } else {
+                        // 大于等于最后位置, 则说明顺序正确不需要移动，更新最后位置
+                        lastIndex = j;
+                    }
+                    break;
+                }
+            }
+            // 没有老节点匹配说明当前需要新增!
+            if (!hasOldNode) {
+                // 获取newVnode的前一个vnode
+                const prevVnode = newChildren[i - 1];
+                // 若有前一个则在其后添加一个新节点
+                if (prevVnode) {
+                    // 在prevVnode真实dom后添加上新vnode节点
+                    patch(null, newVnode, prevVnode.el, 'afterend')
+                } else {
+                    // 说明是第一项
+                    patch(null, newVnode, container, 'afterbegin');
+                }
+            }
+        }
+        // 2、移除oldChildren中没被复用的老节点
+        for(let i = 0;i < oldChildren.length;i++) {
+            const oldVnode = oldChildren[i];
+            const isUsed = !!newChildren.find(({key}) => key === oldVnode.key);
+            if (!isUsed) {
+                unmount(oldVnode);
+            }
+        }
+    }
     // 更新children
     const patchChildren = (oldVnode, newVnode, container) => {
         const oldChildren = oldVnode.children;
@@ -41,10 +103,13 @@ export const createRenderer = ({
             if (oldChildrenType === Type.String) {
                 setElementText(container, newChildren);
             } else {
-                // diff算法
-                // 此处朴素做法全删再全加
-                oldChildren.forEach(unmount);
-                newChildren.forEach((el) => mountElement(el, container));
+                // 1、朴素做法全删再全加
+                // oldChildren.forEach(unmount);
+                // newChildren.forEach((el) => mountElement(el, container));
+
+                // 2、简单diff算法
+                easyDiff(oldChildren, newChildren, container);
+
             }
         }
         // 不同时 老string则删除挂载新数组，老array先卸载再挂载文本
@@ -59,9 +124,9 @@ export const createRenderer = ({
         }
     };
     // 挂载节点
-    const mountElement = (vnode, container) => {
+    const mountElement = (vnode, container, position: PositionType = 'beforeend') => {
         const {type, children, props} = vnode;
-        const element = (vnode.el = createElement(vnode.type));
+        const element = (vnode.el = createElement(type));
         const Mount_Node_MAP = {
             string: () => setElementText(element, children),
             array: () =>
@@ -75,7 +140,7 @@ export const createRenderer = ({
                 patchProps(element, key, null, props[key]);
             }
         }
-        insert(element, container);
+        insert(element, container, position)
     };
     // 卸载节点
     const unmount = (vnode) => {
@@ -106,7 +171,7 @@ export const createRenderer = ({
         patchChildren(oldVnode, newVnode, el);
     };
     // 处理前后节点
-    const patch = (oldVnode, newVnode, container) => {
+    const patch = (oldVnode, newVnode, container, position?: PositionType) => {
         // 处理前后vnode类型不同情况div -> input 先卸载在挂载
         if (oldVnode && oldVnode.type !== newVnode.type) {
             unmount(oldVnode);
@@ -116,7 +181,7 @@ export const createRenderer = ({
         // 处理普通标签情况
         if (getType(type) === Type.String) {
             if (!oldVnode) {
-                mountElement(newVnode, container);
+                mountElement(newVnode, container, position);
             } else {
                 patchElement(oldVnode, newVnode);
             }
@@ -140,7 +205,7 @@ export const createRenderer = ({
             },
             [VNODE_TYPE.FRAGMENT]: () => {
                 if (!oldVnode) {
-                    // 没有老节点则将所有节点都直接新增到当前容器中
+                    // 没有老节点则将所有子节点都新增到容器末尾
                     newVnode.children.forEach((element) =>
                         patch(null, element, container)
                     );
@@ -170,7 +235,7 @@ export const createRenderer = ({
 };
 
 // 浏览器端方式
-createRenderer({
+export const client = createRenderer({
     /**
      * 创建节点
      */
@@ -182,7 +247,16 @@ createRenderer({
     /**
      * 向容器中追加节点
      */
-    insert: (element, container) => container.appendChild(element),
+    insert: (element, anchorElement, position: PositionType = 'beforeend') => {
+        // 1、直接在容器最后添加child即可
+        // anchorElement.appendChild(element);
+
+        // 2、为满足定位模式, 当anchor为空时直接追加在最后
+        // container.insertBefore(element, anchor)
+        
+        // 3、学习一个添加元素的api insertAdjacentElement
+        anchorElement.insertAdjacentElement(position, element);
+    },
     /**
      * 对新节点做更新
      * 设置属性若是标签自带属性则使用赋值，其他使用setAttribute方式
