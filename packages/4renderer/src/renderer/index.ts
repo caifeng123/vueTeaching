@@ -91,6 +91,7 @@ export const createRenderer = ({
             }
         }
     }
+    // 双端diff算法
     const twiceDiff = (oldChildren, newChildren, container) => {
         let oldStart = 0;
         let oldEnd = oldChildren.length - 1;
@@ -136,7 +137,7 @@ export const createRenderer = ({
                 oldEnd--;
                 newStart++;
             } else {
-                // 2.四个可选的key都没命中,则按原先操作获取dom
+                // 2.四个可选的key都没命中,则按朴素算法获取dom
                 const indInOld = oldChildren.findIndex(({key}) => key === newStartVnode.key);
                 if (indInOld > 0) {
                     // 2.1找到了则需要进行更新+移动操作
@@ -153,6 +154,16 @@ export const createRenderer = ({
                 }
                 newStart++;
             }
+        }
+        // 处理老虚拟dom数组遍历完, 新虚拟dom还有余【说明老虚拟dom都被复用 需要进行新增】
+        while (oldStart > oldEnd && newStart <= newEnd) {
+            const newStartVnode = newChildren[newStart++];
+            patch(null, newStartVnode, container)
+        }
+        // 处理新虚拟dom数组遍历完，老虚拟dom还有余【说明新虚拟dom都被处理了 需要删除老无用dom】
+        while (oldStart <= oldEnd && newStart > newEnd) {
+            const oldStartVnode = oldChildren[oldStart++];
+            unmount(oldStartVnode);
         }
     }
     // 更新children
