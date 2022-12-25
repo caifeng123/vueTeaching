@@ -5,7 +5,7 @@
 
 import {getType, Type} from "@/utils";
 import {VNODE_TYPE, PositionType} from "./constants";
-import {normalizeClass, shouldSetAsProps} from "./utils";
+import {getSequence, normalizeClass, shouldSetAsProps} from "./utils";
 
 // const vnode = {
 //     type: 'div',
@@ -166,6 +166,135 @@ export const createRenderer = ({
             unmount(oldStartVnode);
         }
     }
+    // 快速diff算法
+    const fastDiff = (oldChildren, newChildren, container) => {
+        // 1 快速过滤头相同的节点
+        let start = 0;
+        while (oldChildren[start].key === newChildren[start].key){
+            patch(oldChildren[start], newChildren[start], container);
+            start++;
+        }
+
+        let oldEnd = oldChildren.length - 1;
+        let newEnd = newChildren.length - 1;
+
+        // 当新老节点数量、key都相同【可能里面的内容不一样】则直接头对比结束后退出
+        // 既新老节点都不剩的情况对应3中缺失的点
+        if (start > oldEnd && start > newEnd) {
+            return;
+        }
+
+        // 2 快速过滤尾相同的节点
+        while (oldChildren[oldEnd].key === newChildren[newEnd].key){
+            patch(oldChildren[oldEnd], newChildren[newEnd], container);
+            oldEnd--;
+            newEnd--;
+        }
+
+        // 3 处理其余节点情况
+        // 3.1 当老节点都被过滤完且新节点还有剩, 需要新增新节点
+        if (start > oldEnd && start <= newEnd) {
+            const beforeStart = start - 1;
+            // 将未处理的新节点都新增
+            // 倒序新增 例如 start = 2; newEnd = 5; newChildren = [1, 2, 3, 4, 5];
+            // [1, 5] => [1, 4, 5] => [1, 3, 4, 5] => [1, 2, 3, 4, 5]
+            while (start <= newEnd) {
+                patch(null, newChildren[newEnd], newChildren[beforeStart], 'afterend');
+                newEnd--;
+            }
+        // 3.2 当新节点都被过滤完时且老节点还有剩, 需要删除老节点
+        } else if (start <= oldEnd && start > newEnd) {
+            // 将未处理的老节点都删除
+            while (start <= oldEnd) {
+                unmount(oldChildren[oldEnd]);
+                oldEnd--;
+            }
+        // 3.3 其他情况 - 新节点和老节点都有剩余
+        } else {
+            // 生成新节点列表对应的老节点下标[相同key则指向老节点下标否则为-1]
+            const source = new Array(newEnd - start + 1).fill(-1);
+            // 生成新节点 {key: index} 组合对象
+            const keyIndex = {};
+            for (let i = start; i <= newEnd;i++) {
+                keyIndex[newChildren[i].key] = i;
+            };
+
+            // 是否需要节点位置变化
+            let move = false;
+            // 记录上一节点位置 - 标志位
+            let pos = 0;
+            // 更新节点数量 - 提前退出循环
+            let patched = 0;
+
+            // 3.3.1 复用老节点
+            for (let i = start;i <= oldEnd;i++) {
+                const oldVnode = oldChildren[i];
+                const k = keyIndex[oldVnode.key];
+                // 3.3.2 若更新过的节点数量少于需要更新的数量，则要进行判断更新
+                if (patched < source.length) {
+                    // 3.3.1.1 key存在 可复用
+                    if (oldVnode.key in keyIndex) {
+                        const newVnode = newChildren[k];
+                        patch(oldVnode, newVnode, container);
+                        // 填充到source数组中
+                        source[k - start] = i;
+
+                        // 可复用更新值+1
+                        patched++;
+                        // 若相对位置有冲突 则需要进行dom节点移动
+                        if (k < pos) {
+                            move = true;
+                        } else {
+                            pos = k;
+                        }
+                    } else {
+                    // 3.3.1.2 key不存在 不可复用 卸载
+                        unmount(oldVnode);
+                    }
+                } else {
+                    // 3.3.2.1 否则直接卸载
+                    unmount(oldVnode);
+                }
+            }
+
+            // 3.3.3 处理复用节点位置移动 + 其他新增节点
+            if (move) {
+                // 3.3.3.1 计算最长递增子序列 - 用作无需移动列表
+                const lis = getSequence(source);
+
+                let headInd = 0;
+                // 3.3.3.2 循环source列表
+                for (let i = 0;i < source.length;i++) {
+                    const newVnodeInd = i + start;
+                    // 3.3.3.2.1 不存在可复用节点时说明需要新增
+                    if (source[i] === -1) {
+                        if (newVnodeInd) {
+                            // 非第0个 有前一项进行定位插入
+                            patch(null, newChildren[newVnodeInd], newChildren[newVnodeInd - 1].el, 'afterend');
+                        } else {
+                            // 第0个 直接插入在第一项
+                            patch(null, newChildren[newVnodeInd], container, 'beforeend');
+                        }
+                    // 3.3.3.2.2 若命中了递增子序列时无需操作
+                    } else if (source[i] === lis[headInd]) {
+                        headInd++;
+                    // 3.3.3.2.3 其余情况说明需要移动dom了
+                    } else {
+                        if (newVnodeInd) {
+                            // 非第0个 有前一项进行定位插入
+                            insert(newChildren[newVnodeInd].el, newChildren[newVnodeInd - 1].el, 'afterend');
+                        } else {
+                            // 第0个 直接插入在第一项
+                            insert(newChildren[newVnodeInd].el, container);
+                        }
+                    }
+                }
+            }
+        }
+
+
+        
+    }
     // 更新children
     const patchChildren = (oldVnode, newVnode, container) => {
         const oldChildren = oldVnode.children;
@@ -187,6 +316,9 @@ export const createRenderer = ({
 
                 // 3、双端diff
                 twiceDiff(oldChildren, newChildren, container);
+
+                // 4、快速diff算法
+                fastDiff(oldChildren, newChildren, container);
             }
         }
         // 不同时 老string则删除挂载新数组，老array先卸载再挂载文本
