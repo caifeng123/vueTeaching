@@ -5,7 +5,8 @@
 
 import {getType, Type} from "@/utils";
 import {VNODE_TYPE, PositionType} from "./constants";
-import {getSequence, normalizeClass, shouldSetAsProps} from "./utils";
+import {getSequence, hasPropsChanged, normalizeClass, queueJob, resolveProps, shouldSetAsProps} from "./utils";
+import {reactive, effect, shallowReactive} from "../reactivity";
 
 // const vnode = {
 //     type: 'div',
@@ -291,9 +292,6 @@ export const createRenderer = ({
                 }
             }
         }
-
-
-        
     }
     // 更新children
     const patchChildren = (oldVnode, newVnode, container) => {
@@ -379,6 +377,149 @@ export const createRenderer = ({
         // 处理children
         patchChildren(oldVnode, newVnode, el);
     };
+
+    // 挂载组件
+    const mountComponent = (vnode, container, position) => {
+        // 此时vnode.type为自定义组件
+        // demo:
+        // <MyComponent name="111" :hehe="nice" />
+        //
+        // const VNode = {
+        //     type: MyComponent,
+        //     props: {
+        //         name: '111',
+        //         hehe: this.nice
+        //     },
+        // };
+        //
+        // const MyComponent = {
+        //     name: 'MyComponent',
+        //     props: {
+        //         name: String
+        //     },
+        //     data() {
+        //         return {
+        //             text: '123'
+        //         }
+        //     },
+        //     render() { // 返回虚拟dom
+        //         return {
+        //             type: 'div',
+        //             children: this.text
+        //         }
+        //     }
+        // };
+        // 获取用户自定义信息 - 渲染函数、数据、生命周期等
+        const {
+            render,
+            data,
+            props: propsType,
+            beforeCreate,
+            created,
+            beforeMount,
+            mounted,
+            beforeUpdate,
+            updated
+        } = vnode.type;
+        // beforeCreate钩子
+        beforeCreate?.();
+
+        // 将数据变为响应式
+        const state = reactive(data());
+
+        const [props, attrs] = resolveProps(propsType, vnode.props);
+
+        // 初始化数据用于后期更新时检查上次数据
+        vnode.component = {
+            // 当前数据
+            state,
+            // props数据浅响应
+            props: shallowReactive(props),
+            // 当前挂载状态
+            isMount: false,
+            // 当前真实vnode
+            realVnode: null
+        };
+
+        const renderContext = new Proxy(vnode.component, {
+            get(target, key, receiver) {
+                // 获取state与props
+                const {state, props} = target;
+                if (state && key in state) {
+                    return Reflect.get(state, key, receiver);
+                }
+                if (key in props) {
+                    return Reflect.get(props, key, receiver);
+                }
+                console.error(`key: ${key as string} 不存在`);
+            },
+            set(target, key, value, receiver) {
+                // 获取state与props
+                const {state, props} = target;
+                if (state && key in state) {
+                    return Reflect.set(state, key, value, receiver);
+                }
+                if (key in props) {
+                    return Reflect.set(props, key, value, receiver);
+                }
+                console.error(`key: ${key as string} 不存在`);
+            },
+        })
+
+        // created 钩子
+        created?.(renderContext);
+
+        // 当state数据变化时，自动执行render渲染+挂载操作
+        effect(() => {
+            // 执行渲染函数获取真实虚拟dom, 将state作为this
+            const realVnode = render.call(renderContext);
+            // 已挂载
+            if (vnode.component.isMount) {
+                // beforeUpdate 钩子
+                beforeUpdate?.(renderContext);
+                // 更新虚拟dom
+                patch(vnode.component.realVnode, realVnode, container, position);
+                // updated 钩子
+                updated?.(renderContext);
+            // 未挂载
+            } else {
+                // beforeMount 钩子
+                beforeMount?.(renderContext);
+                // 挂载真实虚拟dom
+                patch(null, realVnode, container, position);
+                vnode.component.isMount = true;
+
+                // mounted 钩子
+                mounted?.(renderContext);
+            }
+            vnode.component.realVnode = realVnode;
+        }, {
+            // 自定义执行时机【加入微任务执行】
+            scheduler: queueJob
+        });
+    };
+
+    // 更新组件
+    const patchComponent = (oldVnode, newVnode, container, position) => {
+        // 获取老组件props
+        const {props} = (newVnode.component = oldVnode.component);
+        // 判断实际props是否变化
+        if (hasPropsChanged(oldVnode.props, newVnode.props)) {
+            // 获取最新的props
+            const [newProps] = resolveProps(newVnode.type.props, newVnode.props);
+            // 更新props
+            for (const key in newProps) {
+                props[key] = newProps[key];
+            }
+            // 删除不存在的key
+            for (const key in props) {
+                if (!(key in newProps)) {
+                    delete props[key];
+                }
+            }
+        }
+    };
+
     // 处理前后节点
     const patch = (oldVnode, newVnode, container, position?: PositionType) => {
         // 处理前后vnode类型不同情况div -> input 先卸载在挂载
@@ -394,40 +535,42 @@ export const createRenderer = ({
             } else {
                 patchElement(oldVnode, newVnode);
             }
-        }
-        const TEXT_NODE = {
-            // 处理文本节点
-            [VNODE_TYPE.TEXT]: () => {
-                // 当老节点不存在生成一个TextNode
-                if (!oldVnode) {
-                    const element = (newVnode.el = createText(
-                        newVnode.children
-                    ));
-                    insert(element, container);
-                } else {
-                    // 存在直接用nodeValue赋值替换
-                    const element = (newVnode.el = oldVnode.el);
-                    if (oldVnode.children !== newVnode.children) {
-                        setText(element, newVnode.children);
-                    }
+        // 处理文本节点
+        } else if (type === VNODE_TYPE.TEXT) {
+            // 当老节点不存在生成一个TextNode
+            if (!oldVnode) {
+                const element = (newVnode.el = createText(
+                    newVnode.children
+                ));
+                insert(element, container);
+            } else {
+                // 存在直接用nodeValue赋值替换
+                const element = (newVnode.el = oldVnode.el);
+                if (oldVnode.children !== newVnode.children) {
+                    setText(element, newVnode.children);
                 }
-            },
-            [VNODE_TYPE.FRAGMENT]: () => {
-                if (!oldVnode) {
-                    // 没有老节点则将所有子节点都新增到容器末尾
-                    newVnode.children.forEach((element) =>
-                        patch(null, element, container)
-                    );
-                } else {
-                    // 更新所有children
-                    patchChildren(oldVnode, newVnode, container);
-                }
-            },
-        };
-        TEXT_NODE[type]?.();
+            }
+        // 片段节点
+        } else if (type === VNODE_TYPE.FRAGMENT) {
+            if (!oldVnode) {
+                // 没有老节点则将所有子节点都新增到容器末尾
+                newVnode.children.forEach((element) =>
+                    patch(null, element, container)
+                );
+            } else {
+                // 更新所有children
+                patchChildren(oldVnode, newVnode, container);
+            }
         // 自定义组件情况
-        if (typeof type === "object") {
-        }
+        } else if (getType(type) === Type.Object) {
+            if (!oldVnode) {
+                // 挂载组件
+                mountComponent(newVnode, container, position);
+            } else {
+                // 更新组件
+                patchComponent(oldVnode, newVnode, container, position);
+            }
+        };
     };
     // 渲染
     const render = (vnode, container) => {

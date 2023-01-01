@@ -22,7 +22,7 @@ export const MAP_KEYS_ITERATE_KEY = Symbol();
 export const bucket = new WeakMap<any, DepsMap>();
 
 // 活跃函数栈
-export let activeStack: EffectFnType[] = [];
+export const activeStack: EffectFnType[] = [];
 
 /**
  * 存储响应式map, 防止相同索引重复生成多个响应式对象

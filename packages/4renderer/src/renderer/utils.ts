@@ -96,3 +96,64 @@ export const getSequence = arr => {
     }
     return result
 }
+
+// 任务队列set 去重用
+const queueJobSet = new Set<Function>();
+// 是否处于刷新态
+let isFlushing = false;
+// resolve的微任务
+const p = Promise.resolve();
+
+export const queueJob = fn => {
+    queueJobSet.add(fn);
+    if (!isFlushing) {
+        try {
+            isFlushing = true;
+            // 加入微任务执行
+            p.then(() => queueJobSet.forEach(job => job()));
+        } finally {
+            // 清空重置
+            isFlushing = false;
+            queueJobSet.clear();
+        }
+    }
+};
+
+/**
+ * 将props进行区分
+ * @param options 组件定义props
+ * @param propsData 真实传入props
+ * @returns [props, attrs] [真实参数, 其他属性]
+ */
+export const resolveProps = (options: Record<string, any>, propsData: Record<string, any>) => {
+    const props = {};
+    const attrs = {};
+    for (const key in propsData) {
+        if (key in options) {
+            props[key] = propsData[key];
+        } else {
+            attrs[key] = propsData[key];
+        }
+    };
+    return [props, attrs]
+}
+
+/**
+ * 判断新props是否有变化, 确保是否需要重新渲染
+ * @param oldProps 
+ * @param newProps 
+ * @returns boolean
+ */
+export const hasPropsChanged = (oldProps: Record<string, any>, newProps: Record<string, any>) => {
+    // 避免访问原型链
+    const newKeys = Object.keys(newProps);
+    if (Object.keys(oldProps).length !== newKeys.length) {
+        return true;
+    }
+    for (const key of newKeys) {
+        if (oldProps[key] !== newProps[key]) {
+            return true;
+        }
+    }
+    return false;
+};
