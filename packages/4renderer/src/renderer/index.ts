@@ -6,7 +6,7 @@
 import {getType, Type} from "@/utils";
 import {VNODE_TYPE, PositionType} from "./constants";
 import {getSequence, hasPropsChanged, normalizeClass, queueJob, resolveProps, shouldSetAsProps} from "./utils";
-import {reactive, effect, shallowReactive} from "../reactivity";
+import {reactive, effect, shallowReactive, shallowReadonly} from "../reactivity";
 
 // const vnode = {
 //     type: 'div',
@@ -410,7 +410,7 @@ export const createRenderer = ({
         //     }
         // };
         // 获取用户自定义信息 - 渲染函数、数据、生命周期等
-        const {
+        let {
             render,
             data,
             props: propsType,
@@ -419,7 +419,8 @@ export const createRenderer = ({
             beforeMount,
             mounted,
             beforeUpdate,
-            updated
+            updated,
+            setup
         } = vnode.type;
         // beforeCreate钩子
         beforeCreate?.();
@@ -440,6 +441,34 @@ export const createRenderer = ({
             // 当前真实vnode
             realVnode: null
         };
+        
+        /**
+         * setup内部调用触发父组件自定义注册的事件
+         */
+        const emit = (eventName: string, ...payload) => {
+            const eventNewName = `on${eventName[0].toUpperCase()}${eventName.slice(1)}`;
+            const handler = vnode.component.props[eventNewName];
+            if (handler) {
+                handler(...payload)
+            } else {
+                console.error('事件不存在')
+            }
+        };
+
+        const setupContext = {attrs, emit};
+
+        // setup会返回组件实例或数据
+        const setupResult = setup(shallowReadonly(vnode.component.props), setupContext);
+
+        let setupState = null;
+        // 若返回组件模板实例则替换render进行渲染
+        if(getType(setupResult) === Type.Function) {
+            if (render) console.error('setup 函数返回render, 覆盖原先模板');
+            render = setupResult;
+        // 若返回state则也与state合并数据
+        } else {
+            setupState = setupResult;
+        }
 
         const renderContext = new Proxy(vnode.component, {
             get(target, key, receiver) {
@@ -451,6 +480,9 @@ export const createRenderer = ({
                 if (key in props) {
                     return Reflect.get(props, key, receiver);
                 }
+                if (setupState && key in setupState) {
+                    return Reflect.get(setupState, key, receiver);
+                }
                 console.error(`key: ${key as string} 不存在`);
             },
             set(target, key, value, receiver) {
@@ -461,6 +493,9 @@ export const createRenderer = ({
                 }
                 if (key in props) {
                     return Reflect.set(props, key, value, receiver);
+                }
+                if (setupState && key in setupState) {
+                    return Reflect.set(setupState, key, value, receiver);
                 }
                 console.error(`key: ${key as string} 不存在`);
             },

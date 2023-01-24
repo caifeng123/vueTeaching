@@ -129,7 +129,7 @@ export const resolveProps = (options: Record<string, any>, propsData: Record<str
     const props = {};
     const attrs = {};
     for (const key in propsData) {
-        if (key in options) {
+        if (key in options || key.startsWith('on')) {
             props[key] = propsData[key];
         } else {
             attrs[key] = propsData[key];
