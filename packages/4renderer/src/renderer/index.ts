@@ -430,6 +430,8 @@ export const createRenderer = ({
 
         const [props, attrs] = resolveProps(propsType, vnode.props);
 
+        const slots = vnode.children || {};
+
         // 初始化数据用于后期更新时检查上次数据
         vnode.component = {
             // 当前数据
@@ -439,7 +441,9 @@ export const createRenderer = ({
             // 当前挂载状态
             isMount: false,
             // 当前真实vnode
-            realVnode: null
+            realVnode: null,
+            // 记录插槽
+            slots
         };
         
         /**
@@ -455,7 +459,7 @@ export const createRenderer = ({
             }
         };
 
-        const setupContext = {attrs, emit};
+        const setupContext = {attrs, emit, slots};
 
         // setup会返回组件实例或数据
         const setupResult = setup(shallowReadonly(vnode.component.props), setupContext);
@@ -473,7 +477,10 @@ export const createRenderer = ({
         const renderContext = new Proxy(vnode.component, {
             get(target, key, receiver) {
                 // 获取state与props
-                const {state, props} = target;
+                const {state, props, slots} = target;
+                if (key === '$slots') {
+                    return slots;
+                }
                 if (state && key in state) {
                     return Reflect.get(state, key, receiver);
                 }
