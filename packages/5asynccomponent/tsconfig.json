@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "allowSyntheticDefaultImports": true,
+        "lib": ["dom", "es2021"],
+        "target": "es6",
+        "moduleResolution": "Node",
+        "esModuleInterop": true,
+        "sourceMap": true,
+        "importHelpers": true,
+        "baseUrl": ".",
+        "paths": {
+            "tslib": ["node_modules/tslib/tslib.d.ts"],
+            "@/*": ["./src/*"]
+        }
+    },
+    "include": ["./src/**/*"],
+    "exclude": ["node_modules"]
+}
