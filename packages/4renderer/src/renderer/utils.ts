@@ -3,6 +3,7 @@
  * @author caifeng01
  */
 import {getType, Type} from "@/utils";
+import { currentVnodeComponent } from ".";
 
 /**
  * 对不可变标签特殊处理不进行修改操作
@@ -157,3 +158,50 @@ export const hasPropsChanged = (oldProps: Record<string, any>, newProps: Record<
     }
     return false;
 };
+
+/**
+ * setup函数中的声明周期函数
+ * 用作注册，在真正挂载时进行调用
+ */
+export const onMounted = func => {
+    if (currentVnodeComponent) {
+        currentVnodeComponent.mounted.push(func);
+    } else {
+        console.error('onMounted 只能在setup函数中执行')
+    }
+}
+export const onUpdated = func => {
+    if (currentVnodeComponent) {
+        currentVnodeComponent.updated.push(func);
+    } else {
+        console.error('onUpdated 只能在setup函数中执行')
+    }
+}
+export const onUnmounted = func => {
+    if (currentVnodeComponent) {
+        currentVnodeComponent.unmounted.push(func);
+    } else {
+        console.error('onUnmounted 只能在setup函数中执行')
+    }
+}
+export const onBeforeMount = func => {
+    if (currentVnodeComponent) {
+        currentVnodeComponent.beforemount.push(func);
+    } else {
+        console.error('onBeforeMount 只能在setup函数中执行')
+    }
+}
+export const onBeforeUpdate = func => {
+    if (currentVnodeComponent) {
+        currentVnodeComponent.beforeupdate.push(func);
+    } else {
+        console.error('onBeforeUpdate 只能在setup函数中执行')
+    }
+}
+export const onBeforeUnmount = func => {
+    if (currentVnodeComponent) {
+        currentVnodeComponent.beforeunmount.push(func);
+    } else {
+        console.error('onBeforeUnmount 只能在setup函数中执行')
+    }
+}

@@ -8,6 +8,9 @@ import {VNODE_TYPE, PositionType} from "./constants";
 import {getSequence, hasPropsChanged, normalizeClass, queueJob, resolveProps, shouldSetAsProps} from "./utils";
 import {reactive, effect, shallowReactive, shallowReadonly} from "../reactivity";
 
+// 记录当前挂载组件信息
+export let currentVnodeComponent = null;
+
 // const vnode = {
 //     type: 'div',
 //     props: {
@@ -377,7 +380,6 @@ export const createRenderer = ({
         // 处理children
         patchChildren(oldVnode, newVnode, el);
     };
-
     // 挂载组件
     const mountComponent = (vnode, container, position) => {
         // 此时vnode.type为自定义组件
@@ -443,9 +445,15 @@ export const createRenderer = ({
             // 当前真实vnode
             realVnode: null,
             // 记录插槽
-            slots
+            slots,
+            // 生命周期钩子
+            mounted: [],
+            updated: [],
+            beforemount: [],
+            beforeupdate: []
         };
-        
+        // 设置当前currentVnodeComponent 在setup时执行
+        currentVnodeComponent = vnode.component;
         /**
          * setup内部调用触发父组件自定义注册的事件
          */
@@ -464,6 +472,8 @@ export const createRenderer = ({
         // setup会返回组件实例或数据
         const setupResult = setup(shallowReadonly(vnode.component.props), setupContext);
 
+        // setup执行完后清空
+        currentVnodeComponent = null;
         let setupState = null;
         // 若返回组件模板实例则替换render进行渲染
         if(getType(setupResult) === Type.Function) {
@@ -519,20 +529,28 @@ export const createRenderer = ({
             if (vnode.component.isMount) {
                 // beforeUpdate 钩子
                 beforeUpdate?.(renderContext);
+                // setup中注册的函数
+                vnode.component.beforeupdate.forEach(func => func.call(renderContext));
                 // 更新虚拟dom
                 patch(vnode.component.realVnode, realVnode, container, position);
                 // updated 钩子
                 updated?.(renderContext);
+                // setup中注册的函数
+                vnode.component.updated.forEach(func => func.call(renderContext));
             // 未挂载
             } else {
                 // beforeMount 钩子
                 beforeMount?.(renderContext);
+                // setup中注册的函数
+                vnode.component.beforemount.forEach(func => func.call(renderContext));
                 // 挂载真实虚拟dom
                 patch(null, realVnode, container, position);
                 vnode.component.isMount = true;
 
                 // mounted 钩子
                 mounted?.(renderContext);
+                // setup中注册的函数
+                vnode.component.mounted.forEach(func => func.call(renderContext));
             }
             vnode.component.realVnode = realVnode;
         }, {
@@ -540,7 +558,6 @@ export const createRenderer = ({
             scheduler: queueJob
         });
     };
-
     // 更新组件
     const patchComponent = (oldVnode, newVnode, container, position) => {
         // 获取老组件props
